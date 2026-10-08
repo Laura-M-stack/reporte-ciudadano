@@ -7,6 +7,7 @@
  *    Gualeguaychu y el punto se pone tocando el mapa.
  */
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { CENTRO_GUALEGUAYCHU } from '../servicios/ubicacion';
@@ -26,10 +27,36 @@ export function SelectorUbicacion({
   alto?: number;
 }) {
   const centro = punto ?? CENTRO_GUALEGUAYCHU;
+  const mapa = useRef<MapView>(null);
+  const yaCentrado = useRef(false);
+
+  /**
+   * `initialRegion` se evalua UNA sola vez, en el primer render. En ese momento todavia no
+   * llego la ubicacion del GPS, asi que el mapa queda centrado en Gualeguaychu; cuando la
+   * ubicacion llega, el marcador se dibuja en la posicion real y puede quedar fuera de la
+   * pantalla (si el vecino no esta en la ciudad, a cientos de kilometros).
+   *
+   * Por eso, la primera vez que llega un punto, movemos la camara a mano. Solo la primera:
+   * despues el vecino arrastra el marcador y seria molesto que el mapa se recentre solo.
+   */
+  useEffect(() => {
+    if (!punto || yaCentrado.current) return;
+    yaCentrado.current = true;
+    mapa.current?.animateToRegion(
+      {
+        latitude: punto.latitud,
+        longitude: punto.longitud,
+        latitudeDelta: DELTA,
+        longitudeDelta: DELTA,
+      },
+      500,
+    );
+  }, [punto]);
 
   return (
     <View style={[estilos.contenedor, { height: alto }]}>
       <MapView
+        ref={mapa}
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
         initialRegion={{

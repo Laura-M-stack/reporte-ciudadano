@@ -445,12 +445,16 @@ Estas son las que conviene mandar juntas, antes de seguir. Las cuatro primeras b
 - **ESLint se queja al importar algo de `src/mocks` o `src/datos` en una pantalla** → no es un
   falso positivo. Pedilo a través de un servicio.
 - **ESLint marca `react-hooks/set-state-in-effect` en un `useEffect(() => { void cargar(); })`**
-  → la regla llegó con `eslint-config-expo` 57. En las 7 pantallas que cargan datos al abrir
-  está silenciada con un `eslint-disable-next-line` puntual: el reset de estado antes del
-  `await` es intencional (limpia el error previo al recargar) y el costo es un render extra al
-  montar. La forma correcta sería mover ese reset a un wrapper que use el botón de Reintentar,
-  y que el efecto de montaje llame a la carga sin resetear. **Pendiente para después de probar
-  la app en el teléfono.** No silenciar la regla para todo `app/`: taparía casos reales.
+  → la regla llegó con `eslint-config-expo` 57. Queda silenciada con un
+  `eslint-disable-next-line` puntual en cuatro pantallas (`desbloquear`, `cuadrillas`,
+  `reportar` y `reporte/[id]`): el reset de estado antes del `await` es intencional (limpia el
+  error previo al recargar) y el costo es un render extra al montar. **No silenciar la regla
+  para todo `app/`: taparía casos reales.**
+
+  Las otras tres (`mis-reportes`, `bandeja`, `mapa`) ya no la necesitan porque pasaron a
+  `useFocusEffect`, que la regla no inspecciona. Si alguien convierte las cuatro restantes a
+  `useFocusEffect`, acordarse de **borrar el `eslint-disable`**, o ESLint avisa que la
+  supresión sobra.
 - **La app no abre y la consola dice `Route "./_layout.tsx" is missing the required default
   export`, con un error de `expo-notifications` arriba** → no falta ningún export. Un módulo
   que `_layout.tsx` importa falló **al importarse**, así que Expo Router no pudo cargar la ruta

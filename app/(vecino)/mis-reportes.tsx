@@ -12,7 +12,7 @@
  * Al refrescar no solo recarga: compara con la copia local y dispara las notificaciones
  * locales por los cambios de estado (ver src/servicios/sincronizacion.ts).
  */
-import { Link } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
@@ -55,15 +55,20 @@ export default function MisReportes() {
     }
   }, [usuario]);
 
+  // Se recarga cada vez que la pantalla toma foco, no solo al montarse. Con pestanias la
+  // pantalla queda montada: al volver de crear un reporte, la lista mostraba datos viejos.
+  useFocusEffect(
+    useCallback(() => {
+      void cargar();
+    }, [cargar]),
+  );
+
+  // La cola avisa sola cuando cambia: no hace falta refrescar a mano despues de encolar.
   useEffect(() => {
-    // El reset de estado antes del await es intencional (limpia el error previo al recargar); cuesta un render extra al montar.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void cargar();
-    // La cola avisa sola cuando cambia: no hace falta refrescar a mano despues de encolar.
     return cola.suscribir((items) => {
       setPendientes(items.filter((i) => i.estadoEnvio !== 'enviado'));
     });
-  }, [cargar]);
+  }, []);
 
   async function alRefrescar() {
     if (!usuario) return;

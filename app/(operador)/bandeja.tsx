@@ -8,8 +8,8 @@
  * suman, mas arriba va en la lista de Obras". Entre dos con la misma cantidad, el mas viejo
  * primero, porque es el que mas tiempo lleva esperando.
  */
-import { Link } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { listarCuadrillas, listarTiposDeReporte, listarZonas } from '@/servicios/catalogos';
@@ -68,11 +68,13 @@ export default function Bandeja() {
     }
   }, []);
 
-  useEffect(() => {
-    // El reset de estado antes del await es intencional (limpia el error previo al recargar); cuesta un render extra al montar.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void cargar();
-  }, [cargar]);
+  // Se recarga al tomar foco: si el operador cambia un estado en el detalle y vuelve,
+  // la bandeja tiene que mostrar el estado nuevo.
+  useFocusEffect(
+    useCallback(() => {
+      void cargar();
+    }, [cargar]),
+  );
 
   async function alRefrescar() {
     setRefrescando(true);

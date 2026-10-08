@@ -9,6 +9,7 @@
  * Todas lanzan ErrorServicio (nunca Error pelado).
  */
 import { CODIGOS, ErrorServicio, comoErrorServicio, esErrorServicio } from '../errores';
+import { preferencias } from '../datos/preferencias';
 import {
   guardarCambios,
   guardarReportes,
@@ -179,7 +180,15 @@ export async function crearReporte(
   if (!hayApi()) {
     await demorar(DEMORA_MOCK_MS);
     fallasSimuladas.verificar();
-    return reporteSimulado(borrador, idLocal);
+    // El autor es quien tiene la sesion abierta, no un id fijo: si no, el reporte no
+    // aparece en "Mis reclamos" de una cuenta recien registrada.
+    const usuario = await preferencias.leerUsuario();
+    const reporte = reporteSimulado(borrador, idLocal, usuario?.id ?? 'usr-084');
+    // Sin esta linea el reporte se pierde: la cola lo marca como enviado y deja de
+    // mostrarlo como pendiente, pero las listas leen REPORTES, donde no estaria.
+    // El mock tiene que comportarse como un servidor: lo que crea, queda.
+    REPORTES.unshift(reporte);
+    return reporte;
   }
 
   const formulario = new FormData();
@@ -209,7 +218,11 @@ export async function crearReporte(
 }
 
 /** Reporte "como si" lo hubiera creado el servidor. Solo en modo mock. */
-function reporteSimulado(borrador: BorradorReporte, idLocal: string): Reporte {
+function reporteSimulado(
+  borrador: BorradorReporte,
+  idLocal: string,
+  autorId: string,
+): Reporte {
   const ahora = ahoraIso();
   void idLocal; // en modo mock no hace falta; con API viaja como clave de idempotencia.
   return {
@@ -229,7 +242,7 @@ function reporteSimulado(borrador: BorradorReporte, idLocal: string): Reporte {
     // clasifica el operador. El tipo del PRD no admite null, asi que va cadena vacia.
     zonaId: borrador.zonaId ?? '',
     estado: 'recibido',
-    autorId: 'usr-084',
+    autorId,
     cuadrillaId: null,
     duplicadoDe: null,
     adhesiones: 0,

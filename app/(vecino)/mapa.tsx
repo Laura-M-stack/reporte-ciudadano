@@ -8,7 +8,7 @@
  * autorId ni nombres, y tampoco los pide. Si la API los manda igual, el dato viaja al
  * telefono sin que lo usemos: por eso esta la pregunta P-10 al cliente.
  */
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -53,13 +53,17 @@ export default function Mapa() {
     }
   }, []);
 
+  // Se recarga al tomar foco: un reporte recien creado tiene que aparecer en el mapa.
+  useFocusEffect(
+    useCallback(() => {
+      void cargar();
+    }, [cargar]),
+  );
+
   useEffect(() => {
-    // El reset de estado antes del await es intencional (limpia el error previo al recargar); cuesta un render extra al montar.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void cargar();
-    // Si no da permiso, el mapa igual se usa: arranca centrado en Gualeguaychu.
+    // Si no da permiso, el mapa igual se usa: arranca centrado en Gualeguaychú.
     void ubicacionActual().then((r) => setYo(r.coordenadas));
-  }, [cargar]);
+  }, []);
 
   // El filtrado es en memoria: ya tenemos los reportes y asi no hay un viaje a la API
   // por cada toque de filtro.
