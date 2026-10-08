@@ -10,8 +10,8 @@ La app está **completa**: los diez requisitos mínimos de la cátedra están im
 (ver la tabla al final).
 
 Estado de la verificación: `npm run verificar` pasa entero — typecheck sin errores, lint sin
-advertencias y **101 de 101 tests**. Lo que todavia NO se probo es la app corriendo en un
-teléfono: ahí pueden aparecer errores de ejecucion que ni el typecheck ni los tests ven,
+advertencias y **101 de 101 tests**. Lo que todavía NO se probó es la app corriendo en un
+teléfono: ahí pueden aparecer errores de ejecución que ni el typecheck ni los tests ven,
 sobre todo en `expo-audio` y en la API nueva de `expo-file-system`. Presupuesten una sesión
 para el primer `npx expo start`.
 
@@ -38,6 +38,34 @@ npx expo start
 # r  -> recargar
 ```
 
+### Entrar a la app sin API
+
+Con `EXPO_PUBLIC_API_URL` vacío, los servicios responden con los mocks de `src/mocks`. Para
+ingresar sirve cualquiera de estos dos correos y **cualquier clave de 6 caracteres o más**
+(no hay ninguna contraseña escrita en el código: el correo decide el rol):
+
+| Correo | Rol | Qué se ve |
+| --- | --- | --- |
+| `norma@mail.com` | vecino | Reportar, Mis reclamos, Mapa, Ajustes |
+| `claudia@gualeguaychu.gob.ar` | operador | Bandeja, Escanear QR, Cuadrillas, Ajustes |
+
+### Guion de prueba manual
+
+El orden importa: va de lo que más chance tiene de fallar a lo que menos.
+
+1. **Abre y llega al ingreso.** Entrar como vecino.
+2. **Nuevo reporte**: elegir tipo → sacar foto → ver que el mapa tome la ubicación → escribir
+   o grabar la descripción → enviar. Es donde se concentran `expo-camera`, `expo-audio`,
+   `expo-location` y `expo-file-system`.
+3. **Modo avión + nuevo reporte.** Tiene que guardarse y aparecer en Mis reclamos como
+   "pendiente de envío", sin código de seguimiento. Al volver la señal se sube solo.
+4. **Duplicados**: crear un reporte del mismo tipo a menos de 50 m de uno existente. Tiene que
+   ofrecer sumarse en vez de crear otro.
+5. **Mapa.** Si sale gris, falta la clave de Google Maps, no es un bug.
+6. **Como operadora**: cambiar un estado con comentario, intentar rechazar sin motivo (tiene
+   que negarse), asignar una cuadrilla.
+7. **Cerrar y reabrir la app.** La sesión tiene que sobrevivir.
+
 Verificación antes de cada push:
 
 ```powershell
@@ -63,7 +91,7 @@ npm run build:preview        # eas build --platform android --profile preview
 
 El proyecto está en el **SDK 57** (React Native 0.86.3, React 19.2.3). Se subió desde el 54 el
 primer día, antes de escribir pantallas, por un motivo práctico: Expo Go solo soporta el SDK
-más nuevo, así que con el 54 no se podia probar en el teléfono sin armar un APK cada vez.
+más nuevo, así que con el 54 no se podía probar en el teléfono sin armar un APK cada vez.
 
 Desde el SDK 55 los paquetes `expo-*` usan la misma versión mayor que el SDK (`57.x`), así que
 no hay que adivinar versiones: `npx expo install --fix` las resuelve.
@@ -83,22 +111,31 @@ Dos salvedades del alineamiento actual:
 | --- | --- | --- |
 | `app.json` → `android.config.googleMaps.apiKey` | Clave de Google Maps. Sin esto el mapa sale **gris en el APK** aunque en Expo Go se vea bien. | B |
 | `app.json` → `extra.eas.projectId` | Lo completa `eas build:configure`. | B |
-| `.env` → `EXPO_PUBLIC_API_URL` | Cuando la cátedra publique la API. | quién la reciba |
+| `.env` → `EXPO_PUBLIC_API_URL` | Cuando la cátedra publique la API. | quien la reciba |
 
 ---
 
 ## Reparto del trabajo
 
-El front lo hacemos nosotras dos; los otros dos integrantes se ocupan del backend. La app
-está completa: lo que sigue es repartir quién **conoce** cada parte, porque en la defensa
-cada una tiene que poder explicar su código línea por línea.
+El front lo hacemos nosotras dos. La app está completa: lo que sigue es repartir quién
+**conoce** cada parte, porque en la defensa cada una tiene que poder explicar su código
+línea por línea.
+
+> **Cuestión abierta con el grupo, conviene resolverla ya.** Los otros dos integrantes
+> quedaron en hacer el backend, pero la consigna dice que *"la aplicación consume la API
+> provista por la cátedra detrás de una capa de servicios propia"* (requisito 3), y el PRD
+> aclara que *"la API la provee la cátedra"*. Esa "capa de servicios propia" es `src/servicios/`
+> dentro de la app, no un servidor aparte. Los diez requisitos mínimos son todos de la app
+> móvil: no hay ni medio punto de backend. El riesgo concreto es que dos integrantes lleguen
+> a la defensa sin código propio de la app que explicar, y la defensa es individual. Hay que
+> preguntarle a la cátedra y, si el backend no cuenta, que ellos tomen un área de la app.
 
 | Quién | Área | Archivos |
 | --- | --- | --- |
-| **A** | **Crear reporte y cola offline.** Cámara, galeria, nota de voz, ubicación corregible, detección de duplicados a 50 m, cola en SQLite con reintentos, haptica. Es la mitad más difícil. | `app/(vecino)/reportar.tsx`, `src/componentes/CapturaFoto.tsx`, `src/componentes/Audio.tsx`, `src/componentes/SelectorUbicacion.tsx`, `src/servicios/cola.ts`, `src/servicios/adjuntos.ts`, `src/servicios/ubicacion.ts`, `src/servicios/haptica.ts`, `src/datos/colaRepositorio.ts`, `src/datos/archivos.ts`, `src/utils/geo.ts` |
+| **A** | **Crear reporte y cola offline.** Cámara, galería, nota de voz, ubicación corregible, detección de duplicados a 50 m, cola en SQLite con reintentos, háptica. Es la mitad más difícil. | `app/(vecino)/reportar.tsx`, `src/componentes/CapturaFoto.tsx`, `src/componentes/Audio.tsx`, `src/componentes/SelectorUbicacion.tsx`, `src/servicios/cola.ts`, `src/servicios/adjuntos.ts`, `src/servicios/ubicacion.ts`, `src/servicios/haptica.ts`, `src/datos/colaRepositorio.ts`, `src/datos/archivos.ts`, `src/utils/geo.ts` |
 | **B** | **Sesión, seguimiento, mapa y panel del operador.** Auth con biometría, guard por rol, lista y detalle del vecino, QR, mapa público, bandeja con filtros, zonas y cuadrillas, notificaciones. | `app/(auth)/**`, `app/(vecino)/mis-reportes.tsx`, `app/(vecino)/mapa.tsx`, `app/(vecino)/ajustes.tsx`, `app/(operador)/**`, `app/reporte/[id].tsx`, `src/componentes/AccionesOperador.tsx`, `src/contexto/ContextoSesion.tsx`, `src/servicios/auth.ts`, `src/servicios/biometria.ts`, `src/servicios/notificaciones.ts`, `src/servicios/sincronizacion.ts`, `src/servicios/catalogos.ts` |
 
-No es parejo en cantidad de pantallas, pero si en horas: la cola offline sola pesa lo que
+No es parejo en cantidad de pantallas, pero sí en horas: la cola offline sola pesa lo que
 tres pantallas de lectura.
 
 **Compartido entre las dos** (avisar antes de tocar): `src/tipos/**`, `src/errores.ts`,
@@ -126,6 +163,37 @@ pantalla.
 
 **En la defensa cada una explica su código.** Se puede usar IA para desarrollar; en la
 defensa no. Reserven días para leer la app, no horas.
+
+---
+
+## Cómo trabajar sin pisarse
+
+Repositorio: https://github.com/Laura-M-stack/reporte-ciudadano
+
+Somos varias personas sobre el mismo repo, así que:
+
+- **Una rama por tarea**, nunca commitear directo a `main`:
+  `git switch -c feat/mapa-filtros`, y al terminar un Pull Request.
+- **`git pull --rebase origin main` antes de empezar a trabajar cada día.** Evita el 90 % de
+  los conflictos.
+- **`npm run verificar` antes de cada push.** Si falla, no se pushea: el que viene después
+  hereda el problema y no sabe de dónde salió.
+- **Un commit = un cambio con sentido.** Mezclar un cambio de dependencias con uno de código
+  hace imposible revertir solo uno.
+- **Los archivos compartidos se avisan en el grupo antes de tocarlos.** Están listados arriba.
+- **Si cambia `package.json`, va junto con `package-lock.json` en el mismo commit.** El lock es
+  lo que garantiza que todas instalemos exactamente las mismas versiones.
+
+Qué **no** se commitea (ya está en `.gitignore`): `node_modules/`, `.env`, `android/`, `ios/`,
+`.expo/`, `coverage/`. Si alguno aparece en un `git status`, algo se configuró mal.
+
+### Historial de decisiones grandes
+
+| Cuándo | Qué | Por qué |
+| --- | --- | --- |
+| Día 1 | Base compartida: tipos del PRD, mocks, capa de servicios, cola offline, lógica pura con tests, esqueleto de pantallas | Que varias personas puedan trabajar en paralelo sin pisarse |
+| Día 1 | App completa: los diez requisitos implementados | Sacarse la entrega de encima y dejar tiempo para entender el código antes de la defensa |
+| Día 1 | Subida de SDK 54 a 57 | Expo Go solo soporta el SDK más nuevo; con el 54 no se podía probar en el teléfono sin armar un APK cada vez |
 
 ---
 
@@ -172,7 +240,7 @@ Prohibido y bloqueado por `eslint.config.js` dentro de `app/`:
 
 ## Decisiones de arquitectura
 
-### 1. La cola offline es parte del contrato, no una improvisacion
+### 1. La cola offline es parte del contrato, no una improvisación
 
 `src/tipos/cola.ts` define `BorradorReporte`, `ReporteEnCola` y la interfaz `ServicioCola`
 (`encolar`, `listarPendientes`, `reintentar`, `eliminar`, `suscribir`). La escribe A, la lee B
@@ -181,13 +249,13 @@ para mostrar "esperando señal" en la lista del vecino, y la consulta antes de c
 **El envío tiene un solo camino: siempre `cola.encolar()`, haya o no señal.** Nunca
 `crearReporte()` desde una pantalla. Si hubiera dos caminos (uno online y otro offline), el
 camino offline se probaría una vez por mes y se rompería sin que nadie se entere. Con uno solo,
-el modo avion es el caso normal, no la excepcion.
+el modo avión es el caso normal, no la excepción.
 
-`crearServicioCola()` recibe todo por inyección (repositorio, funcion de envío, reloj,
+`crearServicioCola()` recibe todo por inyección (repositorio, función de envío, reloj,
 generador de ids, chequeo de red). Por eso los reintentos y el tope de intentos se testean en
 Node, sin SQLite ni red: `src/servicios/__tests__/cola.test.ts`.
 
-Maquina de estados de una fila de la cola:
+Máquina de estados de una fila de la cola:
 
 ```
 pendiente --(hay red)--> enviando --(ok)------------------> enviado
@@ -204,7 +272,7 @@ que queda en `error` de una y el vecino tiene que corregirlo.
 
 `puntoEnPoligono` y `zonaIdDePunto` viven en `src/utils/geo.ts`: **lógica pura, sin red**. El
 reporte se crea parado frente al pozo, posiblemente sin señal; si el cálculo de zona estuviera
-dentro del servicio que habla con la API, no habria forma de asignar la zona offline ni de
+dentro del servicio que habla con la API, no habría forma de asignar la zona offline ni de
 testearlo sin mockear `fetch`.
 
 El borrador llega a la cola con `zonaId` ya resuelto. La cola no calcula nada; la API tampoco
@@ -215,10 +283,10 @@ preguntarle nada al servidor.
 
 ### 3. IDs locales desde el día uno
 
-Todo reporte nace con `local-<uuid>` (`src/utils/ids.ts`), nunca con un indice secuencial. Dos
-teléfonos offline generarian `local-1` al mismo tiempo y se pisarian al sincronizar. Además el
+Todo reporte nace con `local-<uuid>` (`src/utils/ids.ts`), nunca con un índice secuencial. Dos
+teléfonos offline generarían `local-1` al mismo tiempo y se pisarían al sincronizar. Además el
 `idLocal` viaja al servidor como **clave de idempotencia** (`Idempotency-Key`): si la red se
-corta después de que el servidor guardo, el reintento no crea un duplicado. Falta confirmar que
+corta después de que el servidor guardó, el reintento no crea un duplicado. Falta confirmar que
 la API lo respete (P-08).
 
 ### 4. Un solo tipo de error
@@ -234,9 +302,9 @@ La UI decide que mostrar mirando `codigo`, nunca parseando el texto. `mensajePar
 traduce el código a una frase para el vecino. Así un error de red y un error del servidor se
 manejan igual en la pantalla.
 
-### 5. Los servicios ya son asincronos aunque el mock responda al instante
+### 5. Los servicios ya son asíncronos aunque el mock responda al instante
 
-Si hoy fueran sincronos, cuando llegue la API habria que tocar todas las pantallas. También por
+Si hoy fueran síncronos, cuando llegue la API habría que tocar todas las pantallas. También por
 eso todos los servicios devuelven `Promise` y las pantallas ya manejan los tres estados
 (`EstadoCarga`, `EstadoVacio`, `EstadoError` en `src/ui`), que es lo que la cátedra verifica
 sobre la app entregada.
@@ -245,12 +313,12 @@ sobre la app entregada.
 
 Cuerpo de 18 px (el default de React Native es 14), área táctil mínima de 56 px, contraste alto,
 un color por estado consistente entre mapa, lista y detalle. No es gusto: *"buena parte de
-quiénes reclaman tienen más de 60. Letra grande, botones grandes"*, y se usa parado en la vereda,
+quienes reclaman tienen más de 60. Letra grande, botones grandes"*, y se usa parado en la vereda,
 al sol. Todo sale de `src/tema`; nadie escribe un color a mano en una pantalla.
 
 ---
 
-## Convenciones de datos (del PRD, sin excepcion)
+## Convenciones de datos (del PRD, sin excepción)
 
 - Los identificadores son `string`, nunca `number`.
 - Fechas y horas: texto **ISO 8601 con zona** (`"2026-09-14T10:22:00-03:00"`). Nunca un `Date`,
@@ -259,18 +327,18 @@ al sol. Todo sale de `src/tema`; nadie escribe un color a mano en una pantalla.
 - Un campo que puede no tener valor viene como `null`: no ausente y no `""`.
 - La sesión viaja en `Authorization: Bearer <token>`. El token va a `expo-secure-store`,
   **nunca** a kv-store.
-- Respuesta de la API: `{ "datos": ..., "meta": {...} }` en exito,
+- Respuesta de la API: `{ "datos": ..., "meta": {...} }` en éxito,
   `{ "error": { "codigo": ..., "mensaje": ... } }` en error.
 
 ### Nombres en el código
 
 El dominio está en castellano (`Reporte`, `Cuadrilla`, `zonaId`) porque así están los tipos del
-PRD y así habla el cliente. El código acompana: `listarReportes`, `encolar`, `puntoEnPoligono`.
+PRD y así habla el cliente. El código acompaña: `listarReportes`, `encolar`, `puntoEnPoligono`.
 No mezclar `getReports` con `listarReportes` en el mismo proyecto.
 
 Los textos de la interfaz tratan al vecino de **vos** (como el mockup del PRD: *"a 12 m de vos"*).
-Los comentarios del código van sin tildes a propósito, para no depender de la codificacion de
-archivo de cuatro maquinas distintas.
+Los comentarios del código van sin tildes a propósito, para no depender de la codificación de
+archivo de cuatro máquinas distintas.
 
 ---
 
@@ -285,8 +353,8 @@ Lo que está cubierto hoy (101 casos):
 
 - **`src/utils/__tests__/geo.test.ts`** — Haversine y point-in-polygon con sus casos límite:
   distancia 0, distancia conocida de 1 grado de latitud, el umbral exacto de 50 m, cruce del
-  antimeridiano, coordenadas fuera de rango, punto sobre un vertice, punto sobre una arista,
-  polígono abierto que se cierra solo, polígono con menos de 3 vertices, punto fuera de todas
+  antimeridiano, coordenadas fuera de rango, punto sobre un vértice, punto sobre una arista,
+  polígono abierto que se cierra solo, polígono con menos de 3 vértices, punto fuera de todas
   las zonas, filtrado por tipo de problema.
 - **`src/utils/__tests__/ids.test.ts`** — formato `local-<uuid>`, detección de id local.
 - **`src/utils/__tests__/fechas.test.ts`** — ISO con offset, formatos del mockup, orden
@@ -297,7 +365,7 @@ Lo que está cubierto hoy (101 casos):
 
 Qué testear y qué no: **lógica pura y reglas de negocio, sí**. Pantallas, no (salvo que sobre
 tiempo). El criterio es si el test se rompe cuando cambia el comportamiento, no cuando cambia
-el color de un boton.
+el color de un botón.
 
 ---
 
@@ -308,10 +376,10 @@ Están marcados en el código como `SUPUESTO S-xx`. Si el cliente contesta disti
 | # | Supuesto | Dónde |
 | --- | --- | --- |
 | S-01 | El registro público solo crea **vecinos**. Las cuentas de operador las da de alta la Municipalidad. En modo mock, el email decide el rol. | `src/tipos/usuario.ts`, `src/servicios/auth.ts` |
-| S-02 | La foto puede venir de cámara **o** de galeria, pero sin al menos una foto no se envia nada. Depende de P-01. | `src/servicios/cola.ts` |
+| S-02 | La foto puede venir de cámara **o** de galería, pero sin al menos una foto no se envía nada. Depende de P-01. | `src/servicios/cola.ts` |
 | S-03 | Si no hay geocodificación inversa, la dirección se guarda como texto genérico y el punto manda. | `src/tipos/cola.ts` |
-| S-04 | Point-in-polygon trata lat/lon como plano cartesiano (valido para polígonos de pocos km). Punto sobre el borde cuenta como **dentro**. El polígono puede venir abierto: se cierra solo. | `src/utils/geo.ts` |
-| S-05 | Si el punto cae fuera de las 4 zonas, el reporte **se envia igual** con `zonaId` sin asignar y lo clasifica el operador. No se le bloquea el reclamo al vecino por un error de GPS. | `src/utils/geo.ts`, `src/servicios/reportes.ts` |
+| S-04 | Point-in-polygon trata lat/lon como plano cartesiano (válido para polígonos de pocos km). Punto sobre el borde cuenta como **dentro**. El polígono puede venir abierto: se cierra solo. | `src/utils/geo.ts` |
+| S-05 | Si el punto cae fuera de las 4 zonas, el reporte **se envía igual** con `zonaId` sin asignar y lo clasifica el operador. No se le bloquea el reclamo al vecino por un error de GPS. | `src/utils/geo.ts`, `src/servicios/reportes.ts` |
 | S-06 | Los polígonos de zona del mock son cuatro franjas inventadas sobre el ejido. Sirven para probar el cálculo; no son los límites reales. | `src/mocks/zonas.ts` |
 | S-07 | Mientras el reporte está en la cola **no se muestra un código de seguimiento inventado**: dice "pendiente de envío". El código `GCHU-...` lo asigna el servidor. Depende de P-02. | `app/(vecino)/mis-reportes.tsx` |
 | S-08 | Cerrar sesión **no borra** la cola de reportes sin subir. Son del vecino; la pantalla avisa que quedan en el teléfono. | `src/servicios/auth.ts`, `app/(vecino)/ajustes.tsx` |
@@ -327,23 +395,23 @@ Están marcados en el código como `SUPUESTO S-xx`. Si el cliente contesta disti
 El PRD lo pide expreso: *"cuando encuentren huecos, avisen: no los resuelvan por su cuenta"*.
 Estas son las que conviene mandar juntas, antes de seguir. Las cuatro primeras bloquean código.
 
-| # | Pregunta | Por que importa |
+| # | Pregunta | Por qué importa |
 | --- | --- | --- |
-| **P-01** | *"Sacar una foto es obligatorio"* y *"si no da permiso de cámara no puede reportar"*, pero también se pide galeria (`expo-image-picker`) y el mockup tiene boton `[galeria]`. **¿Vale una foto de galeria?** | Si vale, el permiso de cámara deja de ser bloqueante y se cae la garantía de "foto tomada parado frente al problema", que es lo que evita las discusiones. |
+| **P-01** | *"Sacar una foto es obligatorio"* y *"si no da permiso de cámara no puede reportar"*, pero también se pide galería (`expo-image-picker`) y el mockup tiene botón `[galeria]`. **¿Vale una foto de galería?** | Si vale, el permiso de cámara deja de ser bloqueante y se cae la garantía de "foto tomada parado frente al problema", que es lo que evita las discusiones. |
 | **P-02** | El código `GCHU-2026-00412` es correlativo y lo asigna el servidor, pero el reporte se crea sin señal y el vecino *"tiene que llevarse un número de seguimiento"*. **¿Qué le mostramos mientras está en la cola?** | Si le mostramos un código provisorio que después cambia, la señora lo anota y en la ventanilla no existe. |
-| **P-03** | Duplicados a 50 m: **¿contra reportes de cualquier tipo o solo del mismo tipo?** (un bache y una luminaria a 10 m no son el mismo problema). **¿Se excluyen los resueltos y rechazados? ¿Se acepta que offline no funcione** si el vecino nunca abrio la app con señal en esa zona? | Define la regla exacta y si hay que precargar un radio de reportes al abrir con conexión. |
+| **P-03** | Duplicados a 50 m: **¿contra reportes de cualquier tipo o solo del mismo tipo?** (un bache y una luminaria a 10 m no son el mismo problema). **¿Se excluyen los resueltos y rechazados? ¿Se acepta que offline no funcione** si el vecino nunca abrió la app con señal en esa zona? | Define la regla exacta y si hay que precargar un radio de reportes al abrir con conexión. |
 | **P-04** | **Falta la entidad Adhesión.** `Reporte` solo tiene `adhesiones: number`. Con un contador no sabemos a quién avisar cuando cambia el estado, no podemos evitar que el mismo vecino se sume cinco veces, ni mostrar "los reportes a los que me sumé". | Hay que agregar `Adhesion { id, reporteId, usuarioId, fechaHora }` al modelo y a la API. |
 | P-05 | La cátedra pide notificaciones **locales**; el hecho que le importa al vecino (el operador cambió el estado) pasa en el servidor. **Sin push, el aviso llega cuando el vecino abre la app.** ¿Alcanza? | Es exactamente el punto que más le importa a Claudia: *"se enoja porque nadie le dice nada"*. Mejor decirlo ahora. |
 | P-06 | **¿Quién provee los polígonos reales de las cuatro zonas?** ¿Se solapan? ¿Qué pasa si el punto cae fuera de todas (quintas, ruta, el río)? El tipo `Reporte.zonaId` es `string`, no admite `null`. | Hoy asumimos S-05. Si el cliente quiere otra cosa, cambia el modelo. |
-| P-07 | Existe `duplicadoDe` pero **"duplicado" no es uno de los cinco estados**. Cuando el operador marca A como duplicado de B: ¿que estado toma A? ¿Las adhesiones de A pasan a B? ¿El autor de A sigue recibiendo avisos? ¿A sigue en el mapa público? | Sin esto no se puede cerrar la pantalla de duplicados del operador. |
+| P-07 | Existe `duplicadoDe` pero **"duplicado" no es uno de los cinco estados**. Cuando el operador marca A como duplicado de B: ¿qué estado toma A? ¿Las adhesiones de A pasan a B? ¿El autor de A sigue recibiendo avisos? ¿A sigue en el mapa público? | Sin esto no se puede cerrar la pantalla de duplicados del operador. |
 | P-08 | **¿La API acepta una clave de idempotencia** (`Idempotency-Key` o el `idLocal` en el cuerpo)? | Sin eso, un corte de red en el momento justo crea el bache catorce veces otra vez, que es el problema que la app vino a resolver. |
-| P-09 | **¿Como se crean las cuentas de operador?** ¿El rol viene en la respuesta del login? ¿Un operador ve solo su zona (`Usuario.zonaId`) o todas? | Define el guard de navegación y los filtros de la bandeja. |
+| P-09 | **¿Cómo se crean las cuentas de operador?** ¿El rol viene en la respuesta del login? ¿Un operador ve solo su zona (`Usuario.zonaId`) o todas? | Define el guard de navegación y los filtros de la bandeja. |
 | P-10 | El mapa público no debe mostrar quién reportó, pero `autorId` está en el modelo. **¿La API lo filtra en el endpoint público?** | Si no lo filtra el servidor, el dato sensible viaja igual al teléfono. |
-| P-11 | QR: **¿qué lleva adentro y quién lo escanea?** ¿La chica de la ventanilla usa esta misma app con cuenta de operador? Si el QR lleva el código a secas, cualquiera que le saque una foto abre el reporte. | Define si hay que implementar lectura de QR además de generacion. |
+| P-11 | QR: **¿qué lleva adentro y quién lo escanea?** ¿La chica de la ventanilla usa esta misma app con cuenta de operador? Si el QR lleva el código a secas, cualquiera que le saque una foto abre el reporte. | Define si hay que implementar lectura de QR además de generación. |
 | P-12 | La API página de a 20. **¿Hay endpoint por área (bbox) para el mapa** o hay que paginar toda la ciudad? | Con paginado de 20 el mapa no se puede pintar. |
-| P-13 | **¿Duracion máxima de la nota de voz, peso máximo de foto, se comprime? ¿La API acepta multipart?** | Con señal intermitente, subir 8 MB por reporte no termina nunca. |
+| P-13 | **¿Duración máxima de la nota de voz, peso máximo de foto, se comprime? ¿La API acepta multipart?** | Con señal intermitente, subir 8 MB por reporte no termina nunca. |
 | P-14 | La cátedra pide biometría para el reingreso general; el PRD solo la menciona para el operador, y el público son mayores de 60 con teléfonos viejos. **¿Confirmamos que la contraseña es el camino principal?** | Hoy asumimos S-12. |
-| P-15 | *"Un rechazado tiene que decir por que"*, pero `CambioDeEstado.comentario` es `string \| null`. **¿Lo valida la API o solo la app?** | Hoy lo valida la app (`servicios/reportes.cambiarEstado`). Si la API no lo hace, entra basura por otro lado. |
+| P-15 | *"Un rechazado tiene que decir por qué"*, pero `CambioDeEstado.comentario` es `string \| null`. **¿Lo valida la API o solo la app?** | Hoy lo valida la app (`servicios/reportes.cambiarEstado`). Si la API no lo hace, entra basura por otro lado. |
 
 ---
 
@@ -353,13 +421,13 @@ Estas son las que conviene mandar juntas, antes de seguir. Las cuatro primeras b
 | --- | --- | --- |
 | 1 | Pantallas y navegación con Expo Router | `app/` con grupos `(auth)`, `(vecino)`, `(operador)`, detalle `reporte/[id]`, guard por rol en cada `_layout` |
 | 2 | Autenticación, sesión persistente, `expo-secure-store`, biometría con alternativa | `src/contexto/ContextoSesion.tsx`, `src/servicios/auth.ts`, `src/servicios/biometria.ts`, `app/(auth)/desbloquear.tsx` |
-| 3 | Consumo de API detrás de capa de servicios, con carga/vacio/error | `src/servicios/http.ts` (único `fetch`), `src/servicios/*.ts`; los tres estados en `src/ui` y usados en todas las listas |
-| 4 | Cámara / galeria + `expo-file-system` (File, Directory, Paths) | `src/componentes/CapturaFoto.tsx`, `src/servicios/adjuntos.ts`, `src/datos/archivos.ts` |
+| 3 | Consumo de API detrás de capa de servicios, con carga/vacío/error | `src/servicios/http.ts` (único `fetch`), `src/servicios/*.ts`; los tres estados en `src/ui` y usados en todas las listas |
+| 4 | Cámara / galería + `expo-file-system` (File, Directory, Paths) | `src/componentes/CapturaFoto.tsx`, `src/servicios/adjuntos.ts`, `src/datos/archivos.ts` |
 | 5 | `expo-location` + `react-native-maps`, usable sin permiso | `src/servicios/ubicacion.ts`, `src/componentes/SelectorUbicacion.tsx`, `app/(vecino)/mapa.tsx`. Si niega el permiso, el mapa abre en Gualeguaychú y el punto se marca tocando |
-| 6 | Notificaciones locales por un hecho real | `src/servicios/notificaciones.ts` + `src/servicios/sincronizacion.ts`: avisa cuando la sincronización detecta un cambio de estado o una adhesión nueva, y cuando la cola logra subir un reporte. Nunca por un boton de prueba |
+| 6 | Notificaciones locales por un hecho real | `src/servicios/notificaciones.ts` + `src/servicios/sincronizacion.ts`: avisa cuando la sincronización detecta un cambio de estado o una adhesión nueva, y cuando la cola logra subir un reporte. Nunca por un botón de prueba |
 | 7 | `expo-sqlite` + kv-store + `expo-network`, abre sin conexión | `src/datos/db.ts` (migraciones), `colaRepositorio.ts`, `reportesCache.ts`, `preferencias.ts`, `src/servicios/red.ts` |
-| 8 | Sensores o haptica justificada | `src/servicios/haptica.ts`: confirmacion de envío (el vecino mira el pozo, no la pantalla), advertencia al detectar un duplicado cerca, obturador de la cámara |
-| 9 | Multimedia (`expo-audio`) con controles a la vista | `src/componentes/Audio.tsx`: grabador con cronometro y tope, reproductor con play/pausa, barra de avance y tiempos |
+| 8 | Sensores o háptica justificada | `src/servicios/haptica.ts`: confirmación de envío (el vecino mira el pozo, no la pantalla), advertencia al detectar un duplicado cerca, obturador de la cámara |
+| 9 | Multimedia (`expo-audio`) con controles a la vista | `src/componentes/Audio.tsx`: grabador con cronómetro y tope, reproductor con play/pausa, barra de avance y tiempos |
 | 10 | Identidad: icono 1024x1024 sin transparencia, splash, nombre | `assets/icon.png` (1024x1024 RGB, sin alfa), `assets/splash-icon.png`, `app.json` |
 
 ---
@@ -369,18 +437,18 @@ Estas son las que conviene mandar juntas, antes de seguir. Las cuatro primeras b
 - **`npm install` falla por peer dependencies** → `npm install --legacy-peer-deps` y después
   `npx expo install --fix`.
 - **Los tests tiran `Unexpected token 'export'`** → el `transformIgnorePatterns` de
-  `jest.config.js` quedó mal cerrado. El parentesis del grupo negado cierra al final.
+  `jest.config.js` quedó mal cerrado. El paréntesis del grupo negado cierra al final.
 - **El mapa sale gris en el APK pero se ve en Expo Go** → falta la clave de Google Maps en
   `app.json`.
 - **`Cannot find module 'expo-sqlite'` en un test** → un test está tocando la capa de datos.
   Los tests de cola usan `crearRepositorioEnMemoria()`, no SQLite.
 - **ESLint se queja al importar algo de `src/mocks` o `src/datos` en una pantalla** → no es un
-  falso positivo. Pedilo a traves de un servicio.
+  falso positivo. Pedilo a través de un servicio.
 - **ESLint marca `react-hooks/set-state-in-effect` en un `useEffect(() => { void cargar(); })`**
-  → la regla llego con `eslint-config-expo` 57. En las 7 pantallas que cargan datos al abrir
+  → la regla llegó con `eslint-config-expo` 57. En las 7 pantallas que cargan datos al abrir
   está silenciada con un `eslint-disable-next-line` puntual: el reset de estado antes del
   `await` es intencional (limpia el error previo al recargar) y el costo es un render extra al
-  montar. La forma correcta sería mover ese reset a un wrapper que use el boton de Reintentar,
+  montar. La forma correcta sería mover ese reset a un wrapper que use el botón de Reintentar,
   y que el efecto de montaje llame a la carga sin resetear. **Pendiente para después de probar
   la app en el teléfono.** No silenciar la regla para todo `app/`: taparía casos reales.
 - **`npx expo install --check` no marca `typescript`** → está en `expo.install.exclude` de
