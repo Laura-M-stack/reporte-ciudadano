@@ -121,7 +121,7 @@ export default function DetalleReporte() {
             texto={
               ultimoCambio?.comentario
                 ? `Rechazado: ${ultimoCambio.comentario}`
-                : 'Rechazado. Si no dice por que, consultá en el Centro de Atencion al Vecino.'
+                : 'Rechazado. Si no dice por que, consultá en el Centro de Atención al Vecino.'
             }
           />
         )}
@@ -192,7 +192,7 @@ export default function DetalleReporte() {
         )}
 
         {/* QR para el mostrador: "para que la chica de la ventanilla lo abra sin tipear nada". */}
-        <Boton titulo="Mostrar codigo QR" variante="secundario" alTocar={() => setQrVisible(true)} />
+        <Boton titulo="Mostrar código QR" variante="secundario" alTocar={() => setQrVisible(true)} />
 
         {!esMio && !esOperador && reporte.estado !== 'resuelto' && (
           <Boton

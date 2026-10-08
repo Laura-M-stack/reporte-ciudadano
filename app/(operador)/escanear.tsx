@@ -39,7 +39,7 @@ export default function Escanear() {
     if (yaLeido.current) return;
     const id = idDesdeQr(contenido);
     if (!id) {
-      setError('Ese codigo no es de un reporte de esta app.');
+      setError('Ese código no es de un reporte de esta app.');
       return;
     }
     yaLeido.current = true;
@@ -54,7 +54,7 @@ export default function Escanear() {
   if (!permiso) {
     return (
       <Pantalla>
-        <EstadoCarga texto="Preparando la camara..." />
+        <EstadoCarga texto="Preparando la cámara..." />
       </Pantalla>
     );
   }
@@ -64,12 +64,12 @@ export default function Escanear() {
       <Pantalla>
         <Titulo>Escanear QR</Titulo>
         <Parrafo suave>
-          Para leer el codigo del vecino en el mostrador necesitamos la camara.
+          Para leer el código del vecino en el mostrador necesitamos la cámara.
         </Parrafo>
         {permiso.canAskAgain ? (
-          <Boton titulo="Permitir la camara" alTocar={() => void pedirPermiso()} />
+          <Boton titulo="Permitir la cámara" alTocar={() => void pedirPermiso()} />
         ) : (
-          <Boton titulo="Abrir configuracion" alTocar={() => void abrirConfiguracion()} />
+          <Boton titulo="Abrir configuración" alTocar={() => void abrirConfiguracion()} />
         )}
       </Pantalla>
     );
@@ -85,7 +85,7 @@ export default function Escanear() {
       />
       <View style={estilos.guia} pointerEvents="none" />
       <View style={estilos.pie}>
-        <Subtitulo>Apuntá al codigo del vecino</Subtitulo>
+        <Subtitulo>Apuntá al código del vecino</Subtitulo>
         {!!error && <Aviso texto={error} tono="alerta" />}
       </View>
     </View>

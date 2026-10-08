@@ -22,5 +22,5 @@ export const ZONAS: Zona[] = [
   { id: 'zon-norte', nombre: 'Zona Norte', referente: 'Corralon Norte', limite: franja(-32.96, -32.99) },
   { id: 'zon-centro', nombre: 'Zona Centro', referente: 'Corralon Central', limite: franja(-32.99, -33.015) },
   { id: 'zon-sur', nombre: 'Zona Sur', referente: 'Corralon Sur', limite: franja(-33.015, -33.04) },
-  { id: 'zon-costanera', nombre: 'Zona Costanera', referente: 'Deposito Costanera', limite: franja(-33.04, -33.07) },
+  { id: 'zon-costanera', nombre: 'Zona Costanera', referente: 'Depósito Costanera', limite: franja(-33.04, -33.07) },
 ];

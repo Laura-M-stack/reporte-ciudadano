@@ -14,7 +14,7 @@
  *  - Ubicacion del GPS, corregible a mano; si niega el permiso, igual puede reportar.
  *  - Antes de crear, mostrar los reportes a menos de 50 m y ofrecer sumarse.
  *  - Descripcion escrita o hablada.
- *  - Al terminar, numero de seguimiento visible (o "pendiente de envio", ver S-07).
+ *  - Al terminar, numero de seguimiento visible (o "pendiente de envío", ver S-07).
  */
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -228,11 +228,11 @@ export default function Reportar() {
   /* -------------------------------------------------------------- validacion */
 
   const faltante = !tipoId
-    ? 'Elegi que tipo de problema es'
+    ? 'Elegí qué tipo de problema es'
     : fotos.length === 0
       ? 'Sacá una foto del problema'
       : !punto
-        ? 'Marcá en el mapa donde esta'
+        ? 'Marcá en el mapa dónde está'
         : null;
 
   /* ------------------------------------------------------------------ render */
@@ -261,15 +261,15 @@ export default function Reportar() {
             {/* S-07: no inventamos un codigo. El oficial lo asigna el servidor. */}
             <Aviso
               tono="alerta"
-              texto="Tu reporte quedo guardado en el telefono y se va a enviar solo cuando vuelva la senal. No hace falta que hagas nada."
+              texto="Tu reporte quedó guardado en el teléfono y se va a enviar solo cuando vuelva la señal. No hace falta que hagas nada."
             />
             <Parrafo suave>
-              Cuando se envie vas a ver el numero de seguimiento en Mis reclamos.
+              Cuando se envie vas a ver el número de seguimiento en Mis reclamos.
             </Parrafo>
           </>
         ) : (
           <>
-            <Aviso tono="info" texto={`Tu numero de seguimiento es ${exito.codigo ?? '—'}`} />
+            <Aviso tono="info" texto={`Tu número de seguimiento es ${exito.codigo ?? '—'}`} />
             <Parrafo suave>Anotalo o sacale una foto a esta pantalla.</Parrafo>
           </>
         )}
@@ -281,7 +281,7 @@ export default function Reportar() {
 
   return (
     <Pantalla>
-      <Titulo>Que pasa?</Titulo>
+      <Titulo>¿Qué pasa?</Titulo>
 
       {!!error && <Aviso texto={error} tono="error" />}
 
@@ -334,7 +334,7 @@ export default function Reportar() {
           </View>
           <View style={estilos.mitad}>
             <Boton
-              titulo="Galeria"
+              titulo="Galería"
               variante="secundario"
               alTocar={() => void agregarDeGaleria()}
             />
@@ -350,15 +350,15 @@ export default function Reportar() {
       {permisoUbicacion === false && (
         <Aviso
           tono="alerta"
-          texto="No nos diste la ubicacion, no hay problema: tocá el mapa para marcar donde esta."
+          texto="No nos diste la ubicación, no hay problema: tocá el mapa para marcar dónde está."
         />
       )}
       <Parrafo>{direccion}</Parrafo>
       <SelectorUbicacion punto={punto} alMover={(c) => void moverPunto(c)} />
       <Parrafo suave>
         {punto
-          ? 'Si el punto no quedo bien, tocá el mapa o arrastrá el marcador.'
-          : 'Tocá el mapa para marcar donde esta el problema.'}
+          ? 'Si el punto no quedó bien, tocá el mapa o arrastrá el marcador.'
+          : 'Tocá el mapa para marcar dónde está el problema.'}
       </Parrafo>
 
       {/* 4. Duplicados a 50 m */}
@@ -366,8 +366,8 @@ export default function Reportar() {
         <View style={estilos.duplicados}>
           <Subtitulo>Ya hay un reclamo parecido acá cerca</Subtitulo>
           <Parrafo suave>
-            Si es el mismo problema, sumate en vez de crear otro: cuantos mas vecinos se suman,
-            mas arriba va en la lista de Obras.
+            Si es el mismo problema, sumate en vez de crear otro: cuantos más vecinos se suman,
+            más arriba va en la lista de Obras.
           </Parrafo>
           {cercanos.map((reporte) => (
             <Tarjeta key={reporte.id}>
@@ -396,14 +396,14 @@ export default function Reportar() {
       <TextInput
         value={descripcion}
         onChangeText={setDescripcion}
-        placeholder="Escribí que pasa (opcional)"
+        placeholder="Escribí qué pasa (opcional)"
         placeholderTextColor={colores.textoSuave}
         multiline
         numberOfLines={4}
-        accessibilityLabel="Descripcion del problema"
+        accessibilityLabel="Descripción del problema"
         style={estilos.area}
       />
-      <Parrafo suave>O contalo hablando, si te resulta mas comodo:</Parrafo>
+      <Parrafo suave>O contalo hablando, si te resulta más cómodo:</Parrafo>
       <GrabadorAudio
         uriGrabada={audio?.uri ?? null}
         alGrabar={(uriTemporal) => {

@@ -94,7 +94,7 @@ export const repositorioColaSqlite: RepositorioCola = {
       throw comoErrorServicio(
         e,
         CODIGOS.ERROR_BASE_DATOS,
-        'No se pudo guardar el reporte en el telefono.',
+        'No se pudo guardar el reporte en el teléfono.',
       );
     }
   },

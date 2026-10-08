@@ -1,6 +1,6 @@
 /**
  * Copia local de lo ultimo que trajo la API. Dos requisitos dependen de esto:
- *  - "La app tiene que abrir y mostrar algo sin conexion" (consigna 7).
+ *  - "La app tiene que abrir y mostrar algo sin conexión" (consigna 7).
  *  - Detectar duplicados a 50 m cuando el vecino esta parado en un barrio sin senal.
  *
  * Guardamos el JSON completo del reporte y ademas desnormalizamos lat/lon/tipo/estado en

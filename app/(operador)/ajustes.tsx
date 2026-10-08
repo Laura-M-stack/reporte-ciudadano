@@ -15,7 +15,7 @@ export default function AjustesOperador() {
         <Parrafo suave>{usuario?.email}</Parrafo>
         <Parrafo suave>Zona asignada: {usuario?.zonaId ?? 'todas'}</Parrafo>
       </Tarjeta>
-      <Boton titulo="Cerrar sesion" variante="secundario" alTocar={() => void salir()} />
+      <Boton titulo="Cerrar sesión" variante="secundario" alTocar={() => void salir()} />
     </Pantalla>
   );
 }

@@ -35,7 +35,7 @@ export default function Registro() {
   return (
     <Pantalla>
       <Titulo>Crear cuenta</Titulo>
-      <Parrafo suave>Con la cuenta podes seguir tus reclamos y recibir avisos.</Parrafo>
+      <Parrafo suave>Con la cuenta podés seguir tus reclamos y recibir avisos.</Parrafo>
 
       {!!error && <Aviso texto={error} tono="error" />}
 
@@ -48,12 +48,12 @@ export default function Registro() {
         keyboardType="email-address"
       />
       <Campo
-        etiqueta="Telefono (opcional)"
+        etiqueta="Teléfono (opcional)"
         value={telefono}
         onChangeText={setTelefono}
         keyboardType="phone-pad"
       />
-      <Campo etiqueta="Contrasena" value={clave} onChangeText={setClave} secureTextEntry />
+      <Campo etiqueta="Contraseña" value={clave} onChangeText={setClave} secureTextEntry />
 
       <Boton titulo="Crear cuenta" alTocar={alRegistrar} cargando={enviando} />
       <Boton titulo="Ya tengo cuenta" variante="secundario" alTocar={() => router.back()} />

@@ -56,7 +56,7 @@ export default function Cuadrillas() {
         );
       })}
       {datos.zonas.length === 0 && (
-        <EstadoVacio titulo="No hay zonas cargadas" detalle="La Municipalidad todavia no envio los limites." />
+        <EstadoVacio titulo="No hay zonas cargadas" detalle="La Municipalidad todavia no envío los límites." />
       )}
     </ScrollView>
   );

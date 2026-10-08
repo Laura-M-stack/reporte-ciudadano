@@ -1,5 +1,5 @@
 /**
- * Estado de la red (expo-network). Lo usan el aviso de "sin conexion" y el disparador
+ * Estado de la red (expo-network). Lo usan el aviso de "sin conexión" y el disparador
  * de la cola offline.
  */
 import * as Network from 'expo-network';

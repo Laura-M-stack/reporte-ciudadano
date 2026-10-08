@@ -41,18 +41,18 @@ export function formatearFechaHora(iso: string): string {
   return `${formatearDiaMes(iso)}/${d.getFullYear()} ${hh}:${mi}`;
 }
 
-/** "hace 3 dias" — para la lista de reportes del vecino. */
+/** "hace 3 días" — para la lista de reportes del vecino. */
 export function tiempoRelativo(iso: string, referencia: Date = new Date()): string {
   if (!esIsoValido(iso)) return '';
   const ms = referencia.getTime() - new Date(iso).getTime();
   const minutos = Math.floor(ms / 60000);
-  if (minutos < 1) return 'recien';
+  if (minutos < 1) return 'recién';
   if (minutos < 60) return `hace ${minutos} min`;
   const horas = Math.floor(minutos / 60);
   if (horas < 24) return `hace ${horas} h`;
   const dias = Math.floor(horas / 24);
   if (dias === 1) return 'ayer';
-  if (dias < 30) return `hace ${dias} dias`;
+  if (dias < 30) return `hace ${dias} días`;
   const meses = Math.floor(dias / 30);
   return meses === 1 ? 'hace un mes' : `hace ${meses} meses`;
 }

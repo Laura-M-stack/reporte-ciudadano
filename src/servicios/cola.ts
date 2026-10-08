@@ -114,7 +114,7 @@ export function crearServicioCola(deps: DependenciasCola): ServicioCola {
   const servicio: ServicioCola = {
     async encolar(borrador: BorradorReporte) {
       if (!borrador.tipoId) {
-        throw new ErrorServicio(CODIGOS.TIPO_REQUERIDO, 'Elegi que tipo de problema es.');
+        throw new ErrorServicio(CODIGOS.TIPO_REQUERIDO, 'Elegí qué tipo de problema es.');
       }
       // El PRD es tajante: sin foto no hay reporte. Se valida ACA, no solo en la pantalla,
       // para que ningun camino (ni un test, ni una pantalla nueva) pueda encolar sin foto.
@@ -128,7 +128,7 @@ export function crearServicioCola(deps: DependenciasCola): ServicioCola {
       if (!borrador.coordenadas) {
         throw new ErrorServicio(
           CODIGOS.UBICACION_REQUERIDA,
-          'Falta la ubicacion del problema.',
+          'Falta la ubicación del problema.',
         );
       }
 

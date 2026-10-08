@@ -68,7 +68,7 @@ function Arranque() {
     })();
 
     // Requisito 6 de la catedra: la notificacion la dispara un hecho real de la app.
-    // Aca el hecho es "la cola consiguio subir un reporte que estaba esperando senal".
+    // Aca el hecho es "la cola consiguio subir un reporte que estaba esperando señal".
     const frenar = iniciarAutoSincronizacion((resultado) => {
       if (resultado.enviados > 0) {
         void notificarReporteEnviado(`${resultado.enviados} reporte(s)`);

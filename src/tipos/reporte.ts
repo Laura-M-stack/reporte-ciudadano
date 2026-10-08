@@ -32,7 +32,7 @@ export type EstadoReporte = 'recibido' | 'en_revision' | 'asignado' | 'resuelto'
 /** Orden y etiquetas visibles de los estados. Unico lugar donde se traducen. */
 export const ETIQUETAS_ESTADO: Record<EstadoReporte, string> = {
   recibido: 'Recibido',
-  en_revision: 'En revision',
+  en_revision: 'En revisión',
   asignado: 'Asignado a cuadrilla',
   resuelto: 'Resuelto',
   rechazado: 'Rechazado',

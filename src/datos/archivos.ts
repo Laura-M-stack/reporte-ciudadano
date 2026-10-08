@@ -32,7 +32,7 @@ export function guardarAdjunto(uriOrigen: string, nombreDestino: string): string
     if (!origen.exists) {
       throw new ErrorServicio(
         CODIGOS.ERROR_ARCHIVO,
-        'El archivo que devolvio la camara ya no existe.',
+        'El archivo que devolvio la cámara ya no existe.',
         { detalles: { uriOrigen } },
       );
     }

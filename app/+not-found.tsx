@@ -8,7 +8,7 @@ export default function NoEncontrada() {
       <Stack.Screen options={{ title: 'No encontramos esa pantalla' }} />
       <Pantalla>
         <Titulo>No encontramos esa pantalla</Titulo>
-        <Parrafo suave>Puede que el enlace este mal o que la pantalla ya no exista.</Parrafo>
+        <Parrafo suave>Puede que el enlace esté mal o que la pantalla ya no exista.</Parrafo>
         <Link href="/">
           <Parrafo>Volver al inicio</Parrafo>
         </Link>

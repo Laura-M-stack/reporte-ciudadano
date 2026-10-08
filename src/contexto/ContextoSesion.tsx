@@ -31,7 +31,7 @@ export interface ValorSesion {
   salir(): Promise<void>;
   /** Reingreso con huella/rostro. Devuelve false si el usuario cancelo. */
   desbloquearConBiometria(): Promise<boolean>;
-  /** "Prefiero usar mi contrasena": manda a la pantalla de ingreso sin borrar nada. */
+  /** "Prefiero usar mi contraseña": manda a la pantalla de ingreso sin borrar nada. */
   usarContrasena(): void;
   refrescar(): Promise<void>;
 }

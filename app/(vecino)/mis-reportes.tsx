@@ -1,5 +1,5 @@
 /**
- * Mis reclamos. PRD: "ver la lista de reportes propios, del mas nuevo al mas viejo".
+ * Mis reclamos. PRD: "ver la lista de reportes propios, del más nuevo al más viejo".
  *
  * Mezcla dos fuentes, y esa mezcla es la parte importante:
  *   - lo que ya esta en el servidor (servicios/reportes)
@@ -124,7 +124,7 @@ export default function MisReportes() {
       {pendientes.length > 0 && (
         <Aviso
           tono="alerta"
-          texto={`${pendientes.length} reporte${pendientes.length === 1 ? '' : 's'} esperando senal. Se envian solos cuando vuelva la conexion.`}
+          texto={`${pendientes.length} reporte${pendientes.length === 1 ? '' : 's'} esperando señal. Se envían solos cuando vuelva la conexión.`}
         />
       )}
 
@@ -141,7 +141,7 @@ export default function MisReportes() {
           <Parrafo>{item.borrador.direccion}</Parrafo>
           {/* S-07: no mostramos un codigo inventado. El oficial lo asigna el servidor. */}
           <Parrafo suave>
-            {item.estadoEnvio === 'error' ? 'No se pudo enviar' : 'Pendiente de envio'} ·{' '}
+            {item.estadoEnvio === 'error' ? 'No se pudo enviar' : 'Pendiente de envío'} ·{' '}
             {tiempoRelativo(item.creadoEn)}
           </Parrafo>
           {!!item.ultimoError && <Parrafo suave>{item.ultimoError.mensaje}</Parrafo>}

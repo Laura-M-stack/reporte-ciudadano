@@ -219,7 +219,7 @@ export function EtiquetaEstado({ estado }: { estado: EstadoReporte }) {
   );
 }
 
-/** Banda de aviso. Se usa para "sin conexion" y para "N reportes esperando senal". */
+/** Banda de aviso. Se usa para "sin conexión" y para "N reportes esperando señal". */
 export function Aviso({
   texto,
   tono = 'info',

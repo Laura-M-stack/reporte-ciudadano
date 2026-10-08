@@ -73,11 +73,11 @@ describe('tiempoRelativo', () => {
   const DIA = 24 * HORA;
 
   it.each([
-    [hace(10_000), 'recien'],
+    [hace(10_000), 'recién'],
     [hace(5 * MIN), 'hace 5 min'],
     [hace(3 * HORA), 'hace 3 h'],
     [hace(DIA), 'ayer'],
-    [hace(5 * DIA), 'hace 5 dias'],
+    [hace(5 * DIA), 'hace 5 días'],
     [hace(45 * DIA), 'hace un mes'],
     [hace(120 * DIA), 'hace 4 meses'],
   ])('%s -> %s', (iso, esperado) => {

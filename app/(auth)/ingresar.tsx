@@ -35,7 +35,7 @@ export default function Ingresar() {
   return (
     <Pantalla>
       <Titulo>Reporte Ciudadano</Titulo>
-      <Parrafo suave>Municipalidad de Gualeguaychu</Parrafo>
+      <Parrafo suave>Municipalidad de Gualeguaychú</Parrafo>
 
       {!!error && <Aviso texto={error} tono="error" />}
 
@@ -49,7 +49,7 @@ export default function Ingresar() {
         placeholder="tunombre@correo.com"
       />
       <Campo
-        etiqueta="Contrasena"
+        etiqueta="Contraseña"
         value={clave}
         onChangeText={setClave}
         secureTextEntry

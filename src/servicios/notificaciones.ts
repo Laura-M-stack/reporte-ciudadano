@@ -152,7 +152,7 @@ export function notificarCambioDeEstado(
 
 export function notificarAdhesion(reporte: Reporte, total: number): Promise<void> {
   return avisar(
-    'Otro vecino se sumo a tu reclamo',
+    'Otro vecino se sumó a tu reclamo',
     `${reporte.codigo} ya tiene ${total} vecinos.`,
     { reporteId: reporte.id, tipo: 'adhesion' },
   );
@@ -161,8 +161,8 @@ export function notificarAdhesion(reporte: Reporte, total: number): Promise<void
 /** La cola logro subir un reporte que estaba esperando senal. */
 export function notificarReporteEnviado(codigo: string): Promise<void> {
   return avisar(
-    'Tu reporte ya se envio',
-    `Quedo registrado como ${codigo}. Ya lo pueden ver en la Municipalidad.`,
+    'Tu reporte ya se envío',
+    `Quedó registrado como ${codigo}. Ya lo pueden ver en la Municipalidad.`,
     { tipo: 'reporte_enviado' },
   );
 }

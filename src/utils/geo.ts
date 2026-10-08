@@ -112,7 +112,7 @@ export function puntoEnPoligono(punto: Coordenadas, poligono: Coordenadas[]): bo
   if (!Array.isArray(poligono) || poligono.length < 3) {
     throw new ErrorServicio(
       CODIGOS.POLIGONO_INVALIDO,
-      'Un poligono necesita al menos 3 vertices.',
+      'Un polígono necesita al menos 3 vertices.',
       { detalles: { vertices: Array.isArray(poligono) ? poligono.length : 0 } },
     );
   }
@@ -181,7 +181,7 @@ export function cajaEnvolvente(poligono: Coordenadas[]): {
   lonMax: number;
 } {
   if (!Array.isArray(poligono) || poligono.length === 0) {
-    throw new ErrorServicio(CODIGOS.POLIGONO_INVALIDO, 'Poligono vacio.');
+    throw new ErrorServicio(CODIGOS.POLIGONO_INVALIDO, 'Polígono vacío.');
   }
   let latMin = Infinity;
   let latMax = -Infinity;

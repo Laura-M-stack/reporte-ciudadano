@@ -111,11 +111,11 @@ export function comoErrorServicio(
  * servidor, que segun el PRD ya viene redactado para humanos.
  */
 const MENSAJES_AMIGABLES: Partial<Record<string, string>> = {
-  [CODIGOS.SIN_CONEXION]: 'No hay conexion. Lo guardamos en el telefono y se envia solo cuando vuelva la senal.',
-  [CODIGOS.TIEMPO_AGOTADO]: 'La conexion tardo demasiado. Probá de nuevo en un momento.',
-  [CODIGOS.ERROR_SERVIDOR]: 'El sistema de la Municipalidad no responde. Volvé a intentar mas tarde.',
-  [CODIGOS.CREDENCIALES_INVALIDAS]: 'El correo o la contrasena no coinciden.',
-  [CODIGOS.SESION_EXPIRADA]: 'Tu sesion venció. Ingresá otra vez.',
+  [CODIGOS.SIN_CONEXION]: 'No hay conexión. Lo guardamos en el teléfono y se envía solo cuando vuelva la señal.',
+  [CODIGOS.TIEMPO_AGOTADO]: 'La conexión tardo demasiado. Probá de nuevo en un momento.',
+  [CODIGOS.ERROR_SERVIDOR]: 'El sistema de la Municipalidad no responde. Volvé a intentar más tarde.',
+  [CODIGOS.CREDENCIALES_INVALIDAS]: 'El correo o la contraseña no coinciden.',
+  [CODIGOS.SESION_EXPIRADA]: 'Tu sesión venció. Ingresá otra vez.',
   [CODIGOS.SIN_PERMISO]: 'Tu cuenta no tiene permiso para hacer esto.',
   [CODIGOS.FOTO_REQUERIDA]: 'El reporte necesita al menos una foto.',
   [CODIGOS.NO_ENCONTRADO]: 'No encontramos ese reporte.',

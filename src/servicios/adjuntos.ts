@@ -69,7 +69,7 @@ export async function elegirDeGaleria(): Promise<AdjuntoLocal | null> {
     if (!permiso.granted) {
       throw new ErrorServicio(
         CODIGOS.SIN_PERMISO,
-        'Para elegir una foto guardada necesitamos permiso a tus fotos. Tambien podes sacar una con la camara.',
+        'Para elegir una foto guardada necesitamos permiso a tus fotos. También podés sacar una con la cámara.',
       );
     }
 

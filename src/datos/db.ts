@@ -96,7 +96,7 @@ export async function obtenerBase(): Promise<SQLite.SQLiteDatabase> {
       throw comoErrorServicio(
         e,
         CODIGOS.ERROR_BASE_DATOS,
-        'No se pudo abrir la base de datos del telefono.',
+        'No se pudo abrir la base de datos del teléfono.',
       );
     }
   })();
@@ -122,7 +122,7 @@ async function migrar(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.execAsync(`PRAGMA user_version = ${VERSION_ESQUEMA}`);
 }
 
-/** Solo para tests y para "cerrar sesion y borrar todo". */
+/** Solo para tests y para "cerrar sesión y borrar todo". */
 export async function cerrarBase(): Promise<void> {
   if (!instancia) return;
   await instancia.closeAsync();

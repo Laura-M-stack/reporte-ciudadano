@@ -9,5 +9,5 @@ export const TIPOS_DE_REPORTE: TipoDeReporte[] = [
   { id: 'tip-agua', nombre: 'Agua o cloaca', icono: 'water-outline', color: '#2A6F97', areaResponsable: 'Obras Sanitarias' },
   { id: 'tip-semaforo', nombre: 'Semaforo', icono: 'git-commit-outline', color: '#B02E2E', areaResponsable: 'Transito' },
   { id: 'tip-vereda', nombre: 'Vereda', icono: 'footsteps-outline', color: '#7A5C3E', areaResponsable: 'Obras Publicas' },
-  { id: 'tip-otro', nombre: 'Otro', icono: 'ellipsis-horizontal-outline', color: '#5B6670', areaResponsable: 'Centro de Atencion al Vecino' },
+  { id: 'tip-otro', nombre: 'Otro', icono: 'ellipsis-horizontal-outline', color: '#5B6670', areaResponsable: 'Centro de Atención al Vecino' },
 ];

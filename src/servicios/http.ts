@@ -70,7 +70,7 @@ export async function pedirCompleto<T>(
   if (!hayApi()) {
     throw new ErrorServicio(
       CODIGOS.SIN_CONEXION,
-      'Todavia no hay API configurada (EXPO_PUBLIC_API_URL vacia).',
+      'Todavia no hay API configurada (EXPO_PUBLIC_API_URL vacía).',
       { detalles: { ruta } },
     );
   }
@@ -98,12 +98,12 @@ export async function pedirCompleto<T>(
   } catch (e) {
     clearTimeout(temporizador);
     if ((e as Error)?.name === 'AbortError') {
-      throw new ErrorServicio(CODIGOS.TIEMPO_AGOTADO, 'La conexion tardo demasiado.', {
+      throw new ErrorServicio(CODIGOS.TIEMPO_AGOTADO, 'La conexión tardo demasiado.', {
         causa: e,
         reintentable: true,
       });
     }
-    throw new ErrorServicio(CODIGOS.SIN_CONEXION, 'No hay conexion con el servidor.', {
+    throw new ErrorServicio(CODIGOS.SIN_CONEXION, 'No hay conexión con el servidor.', {
       causa: e,
       reintentable: true,
     });
@@ -130,7 +130,7 @@ export async function pedirCompleto<T>(
 
   if (!respuesta.ok) {
     if (respuesta.status === 401) {
-      throw new ErrorServicio(CODIGOS.SESION_EXPIRADA, 'Tu sesion venció.', {
+      throw new ErrorServicio(CODIGOS.SESION_EXPIRADA, 'Tu sesión venció.', {
         detalles: { estado: 401 },
       });
     }

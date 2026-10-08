@@ -189,7 +189,7 @@ export function AccionesOperador({
       {(estado === 'resuelto' || reporte.estado === 'resuelto') && (
         <>
           <Parrafo suave>
-            Subí la foto del arreglo: es lo que mas agradecen los vecinos.
+            Subí la foto del arreglo: es lo que más agradecen los vecinos.
           </Parrafo>
           <Boton
             titulo="Sacar foto del arreglo"

@@ -21,7 +21,7 @@ export const DEMORA_MOCK_MS = 350;
  * pruebas para verificar que el estado de error se ve en pantalla.
  */
 export function simularErrorDeRed(): never {
-  throw new ErrorServicio(CODIGOS.SIN_CONEXION, 'No hay conexion con el servidor.', {
+  throw new ErrorServicio(CODIGOS.SIN_CONEXION, 'No hay conexión con el servidor.', {
     reintentable: true,
   });
 }

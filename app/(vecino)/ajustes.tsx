@@ -70,18 +70,18 @@ export default function Ajustes() {
           <Switch value={huella} onValueChange={cambiarHuella} disabled={!hayHuella} />
         </View>
         {!hayHuella && (
-          <Parrafo suave>Este telefono no tiene huella ni rostro configurados.</Parrafo>
+          <Parrafo suave>Este teléfono no tiene huella ni rostro configurados.</Parrafo>
         )}
       </Tarjeta>
 
       {pendientes > 0 && (
         <Aviso
           tono="alerta"
-          texto={`Tenes ${pendientes} reporte(s) sin enviar. Si cerras sesion se siguen guardando en este telefono.`}
+          texto={`Tenés ${pendientes} reporte(s) sin enviar. Si cerras sesión se siguen guardando en este teléfono.`}
         />
       )}
 
-      <Boton titulo="Cerrar sesion" variante="secundario" alTocar={() => void salir()} />
+      <Boton titulo="Cerrar sesión" variante="secundario" alTocar={() => void salir()} />
     </Pantalla>
   );
 }

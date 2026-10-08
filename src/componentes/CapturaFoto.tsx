@@ -54,15 +54,15 @@ export function CapturaFoto({
           <View style={estilos.centro} />
         ) : !permiso.granted ? (
           <View style={estilos.explicacion}>
-            <Subtitulo>Necesitamos la camara</Subtitulo>
+            <Subtitulo>Necesitamos la cámara</Subtitulo>
             <Parrafo suave>
-              La foto es lo unico que evita las discusiones sobre que habia en el lugar. Sin
+              La foto es lo único que evita las discusiones sobre qué había en el lugar. Sin
               foto no podemos tomar el reporte.
             </Parrafo>
             {permiso.canAskAgain ? (
-              <Boton titulo="Permitir la camara" alTocar={() => void pedirPermiso()} />
+              <Boton titulo="Permitir la cámara" alTocar={() => void pedirPermiso()} />
             ) : (
-              <Boton titulo="Abrir configuracion" alTocar={() => void abrirConfiguracion()} />
+              <Boton titulo="Abrir configuración" alTocar={() => void abrirConfiguracion()} />
             )}
             <Boton titulo="Volver" variante="secundario" alTocar={alCerrar} />
           </View>

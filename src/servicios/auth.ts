@@ -29,12 +29,12 @@ configurarToken(() => tokenEnMemoria);
 function validarCredenciales(credenciales: Credenciales): void {
   const email = credenciales.email?.trim() ?? '';
   if (!email.includes('@')) {
-    throw new ErrorServicio('EMAIL_INVALIDO', 'Escribi un correo valido.');
+    throw new ErrorServicio('EMAIL_INVALIDO', 'Escribi un correo válido.');
   }
   if ((credenciales.clave?.length ?? 0) < LARGO_MINIMO_CLAVE) {
     throw new ErrorServicio(
       'CLAVE_CORTA',
-      `La contrasena tiene que tener al menos ${LARGO_MINIMO_CLAVE} caracteres.`,
+      `La contraseña tiene que tener al menos ${LARGO_MINIMO_CLAVE} caracteres.`,
     );
   }
 }
@@ -64,7 +64,7 @@ export async function ingresar(credenciales: Credenciales): Promise<Sesion> {
     if (!usuario) {
       throw new ErrorServicio(
         CODIGOS.CREDENCIALES_INVALIDAS,
-        'El correo o la contrasena no coinciden.',
+        'El correo o la contraseña no coinciden.',
       );
     }
     return persistirSesion({ token: `mock-${nuevoUuid()}`, usuario });

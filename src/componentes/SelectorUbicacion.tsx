@@ -52,7 +52,7 @@ export function SelectorUbicacion({
             draggable
             coordinate={{ latitude: punto.latitud, longitude: punto.longitud }}
             pinColor={colores.acento}
-            title="Aca esta el problema"
+            title="Acá esta el problema"
             description="Mantene apretado y arrastra para corregir"
             onDragEnd={(evento) =>
               alMover({

@@ -53,14 +53,14 @@ export function GrabadorAudio({
     try {
       const permiso = await AudioModule.requestRecordingPermissionsAsync();
       if (!permiso.granted) {
-        setError('Sin permiso de microfono no podemos grabar. Podes escribir la descripcion.');
+        setError('Sin permiso de microfono no podemos grabar. Podés escribir la descripción.');
         return;
       }
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await grabador.prepareToRecordAsync();
       grabador.record();
     } catch {
-      setError('No se pudo empezar a grabar. Probá escribiendo la descripcion.');
+      setError('No se pudo empezar a grabar. Probá escribiendo la descripción.');
     }
   }
 
@@ -72,7 +72,7 @@ export function GrabadorAudio({
       await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
       if (grabador.uri) alGrabar(grabador.uri);
     } catch {
-      setError('No se pudo guardar la grabacion.');
+      setError('No se pudo guardar la grabación.');
     }
   }
 
@@ -86,7 +86,7 @@ export function GrabadorAudio({
       <View style={estilos.bloque}>
         <ReproductorAudio uri={uriGrabada} />
         <Pressable onPress={alBorrar} accessibilityRole="button" style={estilos.enlace}>
-          <Text style={estilos.enlaceTexto}>Borrar la grabacion y hacerla de nuevo</Text>
+          <Text style={estilos.enlaceTexto}>Borrar la grabación y hacerla de nuevo</Text>
         </Pressable>
       </View>
     );
@@ -97,7 +97,7 @@ export function GrabadorAudio({
       <Pressable
         onPress={() => void (estado.isRecording ? frenar() : empezar())}
         accessibilityRole="button"
-        accessibilityLabel={estado.isRecording ? 'Frenar la grabacion' : 'Grabar una nota de voz'}
+        accessibilityLabel={estado.isRecording ? 'Frenar la grabación' : 'Grabar una nota de voz'}
         style={[estilos.botonGrabar, estado.isRecording && estilos.botonGrabando]}
       >
         <View style={[estilos.puntoRojo, estado.isRecording && estilos.cuadradoRojo]} />

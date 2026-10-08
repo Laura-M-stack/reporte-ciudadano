@@ -146,7 +146,7 @@ export const REPORTES: Reporte[] = [
       },
     ],
     coordenadas: { latitud: -32.9744, longitud: -58.5402 },
-    direccion: 'Sin direccion (punto marcado en el mapa)',
+    direccion: 'Sin dirección (punto marcado en el mapa)',
     zonaId: 'zon-norte',
     estado: 'recibido',
     autorId: 'usr-084',
@@ -160,7 +160,7 @@ export const REPORTES: Reporte[] = [
     id: 'rep-00432',
     codigo: 'GCHU-2026-00432',
     tipoId: 'tip-vereda',
-    descripcion: 'Vereda levantada por la raiz, ya se cayo una persona.',
+    descripcion: 'Vereda levantada por la raiz, ya se cayó una persona.',
     audioUrl: null,
     fotos: [
       { id: 'fot-931', url: 'https://picsum.photos/seed/vereda1/800/600', momento: 'problema' },
@@ -179,15 +179,15 @@ export const REPORTES: Reporte[] = [
   },
 ];
 
-/** Caso "lista vacia" para probar el estado vacio de las pantallas. */
+/** Caso "lista vacía" para probar el estado vacio de las pantallas. */
 export const SIN_REPORTES: Reporte[] = [];
 
 const MOTIVO_LARGO =
   'Rechazado porque el vehiculo se encuentra en un terreno privado y la Municipalidad no tiene ' +
-  'facultades para removerlo. Corresponde iniciar el reclamo en la Direccion de Inspeccion General, ' +
+  'facultades para removerlo. Corresponde iniciar el reclamo en la Dirección de Inspeccion General, ' +
   'presentando nota firmada en Mesa de Entradas de calle Uruguay 875, de lunes a viernes de 7 a 13. ' +
   'Si el vehiculo estuviera sobre la vereda o la calzada, se puede volver a reportar por esta via ' +
-  'indicandolo en la descripcion y adjuntando una foto donde se vea la linea municipal.';
+  'indicandolo en la descripción y adjuntando una foto donde se vea la línea municipal.';
 
 export const CAMBIOS_DE_ESTADO: CambioDeEstado[] = [
   // rep-00412: el historial del mockup del PRD
@@ -213,7 +213,7 @@ export const CAMBIOS_DE_ESTADO: CambioDeEstado[] = [
   { id: 'cam-1231', reporteId: 'rep-00430', estado: 'en_revision', comentario: 'Se pide informe a Obras Sanitarias', operadorId: 'usr-003', fechaHora: '2026-09-01T11:00:00-03:00' },
   { id: 'cam-1232', reporteId: 'rep-00430', estado: 'asignado', comentario: 'Cuadrilla 7', operadorId: 'usr-003', fechaHora: '2026-09-03T08:30:00-03:00' },
   { id: 'cam-1233', reporteId: 'rep-00430', estado: 'en_revision', comentario: 'La cuadrilla no encontro la perdida, se revisa de nuevo', operadorId: 'usr-003', fechaHora: '2026-09-04T17:10:00-03:00' },
-  { id: 'cam-1234', reporteId: 'rep-00430', estado: 'resuelto', comentario: 'Reparada la conexion domiciliaria', operadorId: 'usr-003', fechaHora: '2026-09-08T12:00:00-03:00' },
+  { id: 'cam-1234', reporteId: 'rep-00430', estado: 'resuelto', comentario: 'Reparada la conexión domiciliaria', operadorId: 'usr-003', fechaHora: '2026-09-08T12:00:00-03:00' },
 
   { id: 'cam-1240', reporteId: 'rep-00432', estado: 'recibido', comentario: null, operadorId: null, fechaHora: '2026-09-17T09:05:00-03:00' },
 ];

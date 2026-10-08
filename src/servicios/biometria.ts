@@ -50,12 +50,12 @@ export async function autenticar(motivo = 'Confirma tu identidad para entrar'): 
   if (!estado.hayRegistro) {
     throw new ErrorServicio(
       CODIGOS.BIOMETRIA_NO_DISPONIBLE,
-      'Este telefono no tiene huella ni rostro configurados. Ingresa con tu contrasena.',
+      'Este teléfono no tiene huella ni rostro configurados. Ingresa con tu contraseña.',
     );
   }
   const resultado = await LocalAuthentication.authenticateAsync({
     promptMessage: motivo,
-    cancelLabel: 'Usar contrasena',
+    cancelLabel: 'Usar contraseña',
     disableDeviceFallback: false,
   });
   return resultado.success;
@@ -71,7 +71,7 @@ export async function habilitar(habilitada: boolean): Promise<void> {
     if (!estado.hayRegistro) {
       throw new ErrorServicio(
         CODIGOS.BIOMETRIA_NO_DISPONIBLE,
-        'No hay huella ni rostro configurados en este telefono.',
+        'No hay huella ni rostro configurados en este teléfono.',
       );
     }
   }

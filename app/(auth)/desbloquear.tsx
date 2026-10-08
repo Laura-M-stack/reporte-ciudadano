@@ -21,7 +21,7 @@ export default function Desbloquear() {
     setIntentando(true);
     try {
       const ok = await desbloquearConBiometria();
-      if (!ok) setError('No se pudo confirmar tu identidad. Proba de nuevo o usa tu contrasena.');
+      if (!ok) setError('No se pudo confirmar tu identidad. Proba de nuevo o usa tu contraseña.');
     } catch (e) {
       setError(mensajeParaUsuario(e));
     } finally {
@@ -43,7 +43,7 @@ export default function Desbloquear() {
       <Parrafo suave>Confirma que sos vos para entrar.</Parrafo>
       {!!error && <Aviso texto={error} tono="alerta" />}
       <Boton titulo="Usar huella o rostro" alTocar={pedirHuella} cargando={intentando} />
-      <Boton titulo="Prefiero mi contrasena" variante="secundario" alTocar={usarContrasena} />
+      <Boton titulo="Prefiero mi contraseña" variante="secundario" alTocar={usarContrasena} />
     </Pantalla>
   );
 }

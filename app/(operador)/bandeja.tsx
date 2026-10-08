@@ -150,12 +150,12 @@ export default function Bandeja() {
 
       <View style={estilos.chips}>
         <Chip
-          texto="Mas vecinos primero"
+          texto="Más vecinos primero"
           activo={orden === 'adhesiones'}
           alTocar={() => setOrden('adhesiones')}
         />
         <Chip
-          texto="Mas nuevos primero"
+          texto="Más nuevos primero"
           activo={orden === 'recientes'}
           alTocar={() => setOrden('recientes')}
         />

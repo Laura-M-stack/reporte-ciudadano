@@ -19,7 +19,7 @@ export async function guardarToken(token: string): Promise<void> {
       keychainAccessible: SecureStore.WHEN_UNLOCKED,
     });
   } catch (e) {
-    throw comoErrorServicio(e, CODIGOS.ERROR_ARCHIVO, 'No se pudo guardar la sesion.');
+    throw comoErrorServicio(e, CODIGOS.ERROR_ARCHIVO, 'No se pudo guardar la sesión.');
   }
 }
 
@@ -27,7 +27,7 @@ export async function leerToken(): Promise<string | null> {
   try {
     return await SecureStore.getItemAsync(CLAVE_TOKEN);
   } catch {
-    // Si el llavero esta corrupto preferimos "no hay sesion" antes que romper el arranque.
+    // Si el llavero esta corrupto preferimos "no hay sesión" antes que romper el arranque.
     return null;
   }
 }
