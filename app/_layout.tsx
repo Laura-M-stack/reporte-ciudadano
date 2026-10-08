@@ -12,6 +12,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProveedorSesion, useSesion } from '@/contexto/ContextoSesion';
 import { iniciarAutoSincronizacion } from '@/servicios/cola';
@@ -28,9 +29,22 @@ void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 export default function LayoutRaiz() {
   return (
     <ProveedorSesion>
-      <StatusBar style="light" />
-      <Arranque />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colores.fondo } }} />
+      {/*
+        Desde el SDK 55 Android es siempre edge-to-edge: el contenido arranca en el pixel 0,
+        debajo de la barra de estado, y el titulo de cada pantalla quedaba cortado.
+        SafeAreaView con edges=["top"] baja todo lo justo. El borde de abajo NO se toca: de eso
+        se encargan las barras de pestanias de (vecino) y (operador).
+        Va aca y no en cada pantalla para que ninguna se olvide.
+        La camara y el QR abren en <Modal>, que se monta fuera de este arbol: siguen a
+        pantalla completa, que es como tienen que verse.
+      */}
+      <SafeAreaView style={{ flex: 1, backgroundColor: colores.fondo }} edges={['top']}>
+        <StatusBar style="dark" />
+        <Arranque />
+        <Stack
+          screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colores.fondo } }}
+        />
+      </SafeAreaView>
     </ProveedorSesion>
   );
 }

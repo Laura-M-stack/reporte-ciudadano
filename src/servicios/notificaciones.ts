@@ -13,17 +13,23 @@
  * Lo que NO hace: avisar con la app cerrada. Eso necesita push y esta fuera de alcance.
  *
  * POR QUE EL MODULO SE CARGA EN DIFERIDO (y no con un `import` arriba):
- * desde el SDK 53, expo-notifications quita el push remoto de Expo Go en Android y el
- * modulo puede fallar al cargarse. Con un `import` normal, ese fallo ocurre al IMPORTAR y
- * se propaga a app/_layout.tsx: Expo Router no puede cargar la ruta raiz, avisa
- * "missing the required default export" y la app no abre. Cargarlo en diferido y dentro de
- * try/catch deja la app corriendo igual; si el modulo no esta disponible, los avisos
- * simplemente no se emiten. Las notificaciones locales SI funcionan en Expo Go; donde
- * funcionan con seguridad es en el APK y en una development build.
+ * en Expo Go sobre Android, expo-notifications LANZA UN ERROR al cargarse. No es una
+ * advertencia: su propio warnOfExpoGoPushUsage.js hace `throw` cuando Platform.OS es
+ * 'android', porque el push remoto se quito de Expo Go en el SDK 53. Como el error ocurre al
+ * IMPORTAR, con un `import` normal se propagaba a app/_layout.tsx, Expo Router no podia
+ * cargar la ruta raiz y la app no abria ("missing the required default export").
+ *
+ * Por eso: en Expo Go sobre Android ni se intenta cargar, y en cualquier otro caso se carga
+ * en diferido dentro de try/catch. Consecuencia practica, y hay que tenerla presente para la
+ * defensa: EN EXPO GO NO HAY NINGUNA NOTIFICACION, ni local. El requisito 6 se demuestra en
+ * el APK o en una development build, donde el modulo carga normalmente.
  *
  * Regla que se desprende de esto, y vale para todo el proyecto: ningun modulo de src/ hace
  * trabajo al importarse. Solo define cosas. El trabajo va dentro de funciones.
  */
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { Platform } from 'react-native';
+
 import { preferencias } from '../datos/preferencias';
 import { ETIQUETAS_ESTADO, type EstadoReporte, type Reporte } from '../tipos';
 
@@ -31,16 +37,30 @@ export const CANAL_ANDROID = 'reportes';
 
 type ModuloNotificaciones = typeof import('expo-notifications');
 
+/**
+ * true cuando la app corre dentro de Expo Go (no en el APK ni en una development build).
+ * Se mira con expo-constants, que es API publica y no lanza.
+ */
+export const EN_EXPO_GO =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+/** En Expo Go sobre Android el modulo lanza al cargarse: ni lo intentamos. */
+const MODULO_IMPOSIBLE = EN_EXPO_GO && Platform.OS === 'android';
+
 /** undefined = todavia no se intento; null = se intento y no esta disponible. */
 let modulo: ModuloNotificaciones | null | undefined;
 
 /**
  * Carga el modulo la primera vez y memoriza el resultado, incluido el fallo.
- * Se usa `import()` dinamico (no `require`) para que el fallo sea una promesa rechazada
+ * Se usa `import()` dinamico (no `require`) para que un fallo sea una promesa rechazada
  * que podemos atrapar, en vez de una excepcion al evaluar este archivo.
  */
 async function cargar(): Promise<ModuloNotificaciones | null> {
   if (modulo !== undefined) return modulo;
+  if (MODULO_IMPOSIBLE) {
+    modulo = null;
+    return modulo;
+  }
   try {
     modulo = await import('expo-notifications');
   } catch {
@@ -49,7 +69,10 @@ async function cargar(): Promise<ModuloNotificaciones | null> {
   return modulo;
 }
 
-/** Para que la UI pueda avisar "en este dispositivo no hay avisos" en vez de mentir. */
+/**
+ * Para que la UI pueda decir la verdad ("en este dispositivo no hay avisos") en vez de
+ * prometer notificaciones que no van a llegar.
+ */
 export async function hayNotificaciones(): Promise<boolean> {
   return (await cargar()) !== null;
 }

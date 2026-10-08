@@ -463,11 +463,14 @@ Estas son las que conviene mandar juntas, antes de seguir. Las cuatro primeras b
   Solo define cosas; el trabajo va dentro de funciones. Un `fetch`, un `setHandler` o un pedido
   de permiso en el nivel superior de un archivo rompe la app entera, y el mensaje de error no
   apunta al archivo culpable.
-- **Las notificaciones no llegan en Expo Go** → las **locales** sí funcionan; lo que se quitó
-  de Expo Go en Android desde el SDK 53 es el push remoto, que la app no usa. Si igual no
-  salen, revisar que el permiso esté dado y que los avisos no estén apagados en Ajustes. Donde
-  funcionan con seguridad es en el APK y en una development build: **la demo del requisito 6
-  conviene hacerla ahí**, no en Expo Go.
+- **En Expo Go sobre Android no llega ninguna notificación, ni local** → es así y no es un
+  bug nuestro. `expo-notifications` **lanza un error al cargarse** en Expo Go sobre Android
+  (su propio `warnOfExpoGoPushUsage.js` hace `throw` cuando la plataforma es Android), porque
+  el push remoto se quitó de Expo Go en el SDK 53. Como el módulo entero no carga, las
+  notificaciones locales tampoco. `src/servicios/notificaciones.ts` detecta Expo Go con
+  `expo-constants` y ni intenta cargarlo, así que la app funciona y la consola queda limpia.
+  **El requisito 6 se demuestra en el APK o en una development build**, donde el módulo carga
+  normalmente. Conviene tenerlo previsto antes de la defensa, no descubrirlo ese día.
 - **`npx expo install --check` no marca `typescript`** → está en `expo.install.exclude` de
   `package.json` a propósito. El SDK 57 espera TypeScript 6, que es un salto mayor y puede
   sacar errores de tipos nuevos en todo el código; nos quedamos en 5.9 hasta haber corrido la
