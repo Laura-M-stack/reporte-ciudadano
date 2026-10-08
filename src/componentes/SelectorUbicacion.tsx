@@ -6,11 +6,12 @@
  *  - Si nego el permiso de ubicacion, igual puede reportar: el mapa abre centrado en
  *    Gualeguaychu y el punto se pone tocando el mapa.
  */
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { CENTRO_GUALEGUAYCHU } from '../servicios/ubicacion';
+import { AtribucionOSM, URL_MOSAICOS_OSM, ZOOM_MAXIMO_OSM } from './MapaOSM';
 import { colores, radios } from '../tema';
 import type { Coordenadas } from '../tipos';
 
@@ -57,7 +58,9 @@ export function SelectorUbicacion({
     <View style={[estilos.contenedor, { height: alto }]}>
       <MapView
         ref={mapa}
-        provider={PROVIDER_GOOGLE}
+        // Sin proveedor y sin mapa base: los mosaicos los pone OSM (ver MapaOSM.tsx).
+        provider={null}
+        mapType="none"
         style={StyleSheet.absoluteFill}
         initialRegion={{
           latitude: centro.latitud,
@@ -74,6 +77,7 @@ export function SelectorUbicacion({
           })
         }
       >
+        <UrlTile urlTemplate={URL_MOSAICOS_OSM} maximumZ={ZOOM_MAXIMO_OSM} />
         {punto && (
           <Marker
             draggable
@@ -90,6 +94,7 @@ export function SelectorUbicacion({
           />
         )}
       </MapView>
+      <AtribucionOSM />
     </View>
   );
 }

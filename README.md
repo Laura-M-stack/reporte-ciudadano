@@ -117,7 +117,7 @@ Dos salvedades del alineamiento actual:
 
 | Dónde | Qué | Quién |
 | --- | --- | --- |
-| `app.json` → plugin `react-native-maps` → `androidGoogleMapsApiKey` | Clave de Google Maps. Sin esto el mapa sale en blanco **en el APK**. Hay que habilitar "Maps SDK for Android" en Google Cloud. | B |
+| — | Ya no hace falta clave de mapas: usamos OpenStreetMap. Si algún día se vuelve a Google Maps, la clave va en el plugin `react-native-maps` de `app.json`, en `androidGoogleMapsApiKey`. | — |
 | `app.json` → `extra.eas.projectId` | Lo completa `eas build:configure`. | B |
 | `.env` → `EXPO_PUBLIC_API_URL` | Cuando la cátedra publique la API. | quien la reciba |
 
@@ -317,7 +317,27 @@ eso todos los servicios devuelven `Promise` y las pantallas ya manejan los tres 
 (`EstadoCarga`, `EstadoVacio`, `EstadoError` en `src/ui`), que es lo que la cátedra verifica
 sobre la app entregada.
 
-### 6. Diseño pensado para el público del PRD
+### 6. Mapas con OpenStreetMap, no con Google Maps
+
+Google Maps en Android exige una clave propia, y para obtenerla hace falta cuenta de Google
+Cloud con facturación habilitada, habilitar "Maps SDK for Android" y restringir la clave al
+paquete y al SHA-1 de cada build. Para una entrega de facultad eso es fricción pura: el mapa
+solo tiene que mostrar calles y marcadores.
+
+Con OSM no hace falta clave. `provider={null}` y `mapType="none"` apagan el mapa base, y los
+mosaicos los dibuja `<UrlTile>`. Está centralizado en `src/componentes/MapaOSM.tsx`.
+
+Dos cosas que vienen con esa decisión y no son negociables:
+
+- **La atribución "© OpenStreetMap" es obligatoria.** Los datos están bajo licencia ODbL, que
+  exige acreditar a los colaboradores de forma visible. Por eso `<AtribucionOSM />` va en las
+  dos pantallas con mapa.
+- **El servidor público de mosaicos tiene una
+  [política de uso](https://operations.osmfoundation.org/policies/tiles/)**: sirve para
+  tráfico modesto, no para una app masiva. Para la entrega y la defensa alcanza. Si la
+  Municipalidad la pusiera en producción, habría que pasar a un proveedor de mosaicos propio.
+
+### 7. Diseño pensado para el público del PRD
 
 Cuerpo de 18 px (el default de React Native es 14), área táctil mínima de 56 px, contraste alto,
 un color por estado consistente entre mapa, lista y detalle. No es gusto: *"buena parte de
@@ -446,15 +466,11 @@ Estas son las que conviene mandar juntas, antes de seguir. Las cuatro primeras b
   `npx expo install --fix`.
 - **Los tests tiran `Unexpected token 'export'`** → el `transformIgnorePatterns` de
   `jest.config.js` quedó mal cerrado. El paréntesis del grupo negado cierra al final.
-- **El mapa sale en blanco (solo el logo de Google) o gris** → el componente montó pero no
-  bajaron los mosaicos. En el **APK** es la clave de Google Maps: va en el plugin
-  `react-native-maps` de `app.json`, en `androidGoogleMapsApiKey` — **no** en
-  `android.config.googleMaps.apiKey`, que era donde estaba al principio y el SDK 57 ignora.
-  Hay que habilitar "Maps SDK for Android" en Google Cloud y restringir la clave al
-  `android.package` y al SHA-1 del proyecto. En **Expo Go** no hace falta clave propia: si ahí
-  igual sale en blanco, probar a esperar unos segundos, recargar con `r`, y confirmar que el
-  teléfono tenga datos. Si persiste, hacer una development build, que es donde la clave propia
-  ya aplica.
+- **El mapa sale en blanco** → los mapas usan mosaicos de **OpenStreetMap**, no de Google.
+  La configuración está en `src/componentes/MapaOSM.tsx` y la usan las dos pantallas con
+  mapa. Si no se ven los mosaicos, revisar que el teléfono tenga datos y que
+  `tile.openstreetmap.org` sea alcanzable. **La atribución "© OpenStreetMap" no se saca**:
+  la licencia ODbL la exige.
 - **`Cannot find module 'expo-sqlite'` en un test** → un test está tocando la capa de datos.
   Los tests de cola usan `crearRepositorioEnMemoria()`, no SQLite.
 - **ESLint se queja al importar algo de `src/mocks` o `src/datos` en una pantalla** → no es un
