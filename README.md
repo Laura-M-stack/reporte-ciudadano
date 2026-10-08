@@ -451,6 +451,23 @@ Estas son las que conviene mandar juntas, antes de seguir. Las cuatro primeras b
   montar. La forma correcta sería mover ese reset a un wrapper que use el botón de Reintentar,
   y que el efecto de montaje llame a la carga sin resetear. **Pendiente para después de probar
   la app en el teléfono.** No silenciar la regla para todo `app/`: taparía casos reales.
+- **La app no abre y la consola dice `Route "./_layout.tsx" is missing the required default
+  export`, con un error de `expo-notifications` arriba** → no falta ningún export. Un módulo
+  que `_layout.tsx` importa falló **al importarse**, así que Expo Router no pudo cargar la ruta
+  raíz; el `missing default export` y el `Cannot read property 'ErrorBoundary' of undefined`
+  son consecuencias, no la causa. Mirar siempre el **primer** error de la lista. Pasó con
+  `expo-notifications`, que llamaba a `setNotificationHandler` en el nivel superior del módulo:
+  ahora se carga con `import()` dinámico dentro de try/catch y la configuración ocurre dentro
+  de `configurar()`.
+  **Regla que se desprende, y vale para todo `src/`: ningún módulo hace trabajo al importarse.**
+  Solo define cosas; el trabajo va dentro de funciones. Un `fetch`, un `setHandler` o un pedido
+  de permiso en el nivel superior de un archivo rompe la app entera, y el mensaje de error no
+  apunta al archivo culpable.
+- **Las notificaciones no llegan en Expo Go** → las **locales** sí funcionan; lo que se quitó
+  de Expo Go en Android desde el SDK 53 es el push remoto, que la app no usa. Si igual no
+  salen, revisar que el permiso esté dado y que los avisos no estén apagados en Ajustes. Donde
+  funcionan con seguridad es en el APK y en una development build: **la demo del requisito 6
+  conviene hacerla ahí**, no en Expo Go.
 - **`npx expo install --check` no marca `typescript`** → está en `expo.install.exclude` de
   `package.json` a propósito. El SDK 57 espera TypeScript 6, que es un salto mayor y puede
   sacar errores de tipos nuevos en todo el código; nos quedamos en 5.9 hasta haber corrido la
