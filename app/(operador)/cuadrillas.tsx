@@ -25,6 +25,8 @@ export default function Cuadrillas() {
   }, []);
 
   useEffect(() => {
+    // El reset de estado antes del await es intencional (limpia el error previo al recargar); cuesta un render extra al montar.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void cargar();
   }, [cargar]);
 

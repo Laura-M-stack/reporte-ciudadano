@@ -31,6 +31,8 @@ export default function Desbloquear() {
 
   // Un intento automatico al abrir: es lo que espera el usuario que activo la huella.
   useEffect(() => {
+    // El reset de estado antes del await es intencional (limpia el error previo al recargar); cuesta un render extra al montar.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void pedirHuella();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

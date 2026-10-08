@@ -54,6 +54,8 @@ export default function Mapa() {
   }, []);
 
   useEffect(() => {
+    // El reset de estado antes del await es intencional (limpia el error previo al recargar); cuesta un render extra al montar.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void cargar();
     // Si no da permiso, el mapa igual se usa: arranca centrado en Gualeguaychu.
     void ubicacionActual().then((r) => setYo(r.coordenadas));

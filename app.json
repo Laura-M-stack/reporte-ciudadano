@@ -7,13 +7,9 @@
     "icon": "./assets/icon.png",
     "scheme": "reporteciudadano",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0B4F6C"
-    },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ar.gob.gualeguaychu.reporteciudadano",
@@ -27,7 +23,6 @@
     "android": {
       "package": "ar.gob.gualeguaychu.reporteciudadano",
       "versionCode": 1,
-      "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B4F6C"

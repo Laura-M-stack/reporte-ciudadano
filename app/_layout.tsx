@@ -28,7 +28,7 @@ void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 export default function LayoutRaiz() {
   return (
     <ProveedorSesion>
-      <StatusBar style="light" backgroundColor={colores.primario} />
+      <StatusBar style="light" />
       <Arranque />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colores.fondo } }} />
     </ProveedorSesion>

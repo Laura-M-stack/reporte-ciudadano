@@ -12,7 +12,7 @@ import { StyleSheet, View } from 'react-native';
 import * as haptica from '@/servicios/haptica';
 import { abrirConfiguracion } from '@/servicios/ubicacion';
 import { colores, espacio, radios } from '@/tema';
-import { Aviso, Boton, Pantalla, Parrafo, Subtitulo, Titulo } from '@/ui';
+import { Aviso, Boton, EstadoCarga, Pantalla, Parrafo, Subtitulo, Titulo } from '@/ui';
 
 /**
  * Del contenido del QR sacamos el id del reporte.
@@ -51,7 +51,13 @@ export default function Escanear() {
     }, 1500);
   }
 
-  if (!permiso) return <Pantalla />;
+  if (!permiso) {
+    return (
+      <Pantalla>
+        <EstadoCarga texto="Preparando la camara..." />
+      </Pantalla>
+    );
+  }
 
   if (!permiso.granted) {
     return (

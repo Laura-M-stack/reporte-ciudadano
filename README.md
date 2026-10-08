@@ -6,9 +6,14 @@ ramas, basura) con foto y ubicacion, y para que el Centro de Atencion al Vecino 
 Trabajo Integrador — **Desarrollo para Moviles**, Tecnicatura Universitaria en Desarrollo Web,
 UNER. React Native + Expo + TypeScript + Expo Router. Entrega: APK de release con EAS.
 
-Esto es la **Fase 0**: la base compartida. Los tipos, los servicios, la cola offline, la logica
-pura testeada, el guard de navegacion y el esqueleto de pantallas ya estan. Cada persona
-implementa su parte encima, sin tocar la de las otras.
+La app esta **completa**: los diez requisitos minimos de la catedra estan implementados
+(ver la tabla al final).
+
+Estado de la verificacion: `npm run verificar` pasa entero — typecheck sin errores, lint sin
+advertencias y **101 de 101 tests**. Lo que todavia NO se probo es la app corriendo en un
+telefono: ahi pueden aparecer errores de ejecucion que ni el typecheck ni los tests ven,
+sobre todo en `expo-audio` y en la API nueva de `expo-file-system`. Presupuesten una sesion
+para el primer `npx expo start`.
 
 ---
 
@@ -56,25 +61,28 @@ npm run build:preview        # eas build --platform android --profile preview
 
 ### Version de Expo
 
-`package.json` esta pineado al **SDK 54**, con versiones verificadas de cada paquete. Si el
-equipo prefiere arrancar en el SDK mas nuevo (hay SDK 57 disponible), el camino correcto es:
-
-```powershell
-npm install expo@^57.0.0
-npx expo install --fix       # reacomoda TODOS los expo-* y react-native
-npx expo-doctor
-```
+El proyecto esta en el **SDK 57** (React Native 0.86.3, React 19.2.3). Se subio desde el 54 el
+primer dia, antes de escribir pantallas, por un motivo practico: Expo Go solo soporta el SDK
+mas nuevo, asi que con el 54 no se podia probar en el telefono sin armar un APK cada vez.
 
 Desde el SDK 55 los paquetes `expo-*` usan la misma version mayor que el SDK (`57.x`), asi que
-no hay que adivinar versiones: `expo install --fix` las resuelve. Conviene decidirlo **el primer
-dia**, antes de que alguien escriba una pantalla: subir de SDK a mitad del cuatrimestre cuesta.
+no hay que adivinar versiones: `npx expo install --fix` las resuelve.
+
+Dos salvedades del alineamiento actual:
+
+- **`typescript` se queda en 5.9** aunque el SDK espere 6.0. Esta en `expo.install.exclude` de
+  `package.json` a proposito; el motivo esta abajo, en "Problemas comunes".
+- **`npm install` avisa por `react-native-worklets`.** Llega como dependencia opcional de
+  `@expo/ui` (dentro de `expo-router`) y la version no coincide con la que espera
+  `expo-modules-core`. No hace fallar `verificar` ni `expo install --check`. Si al correr la app
+  aparece algun error de worklets o de reanimated, empezar por ahi.
 
 ### Cosas que hay que completar a mano
 
 | Donde | Que | Quien |
 | --- | --- | --- |
-| `app.json` → `android.config.googleMaps.apiKey` | Clave de Google Maps. Sin esto el mapa sale **gris en el APK** aunque en Expo Go se vea bien. | Persona 3 |
-| `app.json` → `extra.eas.projectId` | Lo completa `eas build:configure`. | Persona 1 |
+| `app.json` → `android.config.googleMaps.apiKey` | Clave de Google Maps. Sin esto el mapa sale **gris en el APK** aunque en Expo Go se vea bien. | B |
+| `app.json` → `extra.eas.projectId` | Lo completa `eas build:configure`. | B |
 | `.env` → `EXPO_PUBLIC_API_URL` | Cuando la catedra publique la API. | quien la reciba |
 
 ---
@@ -127,9 +135,9 @@ defensa no. Reserven dias para leer la app, no horas.
 app/                        Rutas (Expo Router). Solo pantallas y navegacion.
   _layout.tsx               Proveedor de sesion, splash, arranque de la cola
   index.tsx                 Redirige segun sesion y rol
-  (auth)/                   ingresar, registro, desbloquear  [Persona 1]
-  (vecino)/                 reportar, mis-reportes, mapa, ajustes  [2 y 3]
-  (operador)/               bandeja, cuadrillas, ajustes  [Persona 4]
+  (auth)/                   ingresar, registro, desbloquear  [B]
+  (vecino)/                 reportar [A] · mis-reportes, mapa, ajustes [B]
+  (operador)/               bandeja, escanear, cuadrillas, ajustes  [B]
   reporte/[id].tsx          Detalle, compartido vecino/operador
 
 src/
@@ -167,8 +175,8 @@ Prohibido y bloqueado por `eslint.config.js` dentro de `app/`:
 ### 1. La cola offline es parte del contrato, no una improvisacion
 
 `src/tipos/cola.ts` define `BorradorReporte`, `ReporteEnCola` y la interfaz `ServicioCola`
-(`encolar`, `listarPendientes`, `reintentar`, `eliminar`, `suscribir`). Persona 2 la implementa,
-Persona 3 la lee para mostrar "esperando senal" y Persona 1 la consulta antes de cerrar sesion.
+(`encolar`, `listarPendientes`, `reintentar`, `eliminar`, `suscribir`). La escribe A, la lee B
+para mostrar "esperando senal" en la lista del vecino, y la consulta antes de cerrar sesion.
 
 **El envio tiene un solo camino: siempre `cola.encolar()`, haya o no senal.** Nunca
 `crearReporte()` desde una pantalla. Si hubiera dos caminos (uno online y otro offline), el
@@ -368,3 +376,14 @@ Estas son las que conviene mandar juntas, antes de seguir. Las cuatro primeras b
   Los tests de cola usan `crearRepositorioEnMemoria()`, no SQLite.
 - **ESLint se queja al importar algo de `src/mocks` o `src/datos` en una pantalla** → no es un
   falso positivo. Pedilo a traves de un servicio.
+- **ESLint marca `react-hooks/set-state-in-effect` en un `useEffect(() => { void cargar(); })`**
+  → la regla llego con `eslint-config-expo` 57. En las 7 pantallas que cargan datos al abrir
+  esta silenciada con un `eslint-disable-next-line` puntual: el reset de estado antes del
+  `await` es intencional (limpia el error previo al recargar) y el costo es un render extra al
+  montar. La forma correcta seria mover ese reset a un wrapper que use el boton de Reintentar,
+  y que el efecto de montaje llame a la carga sin resetear. **Pendiente para despues de probar
+  la app en el telefono.** No silenciar la regla para todo `app/`: taparia casos reales.
+- **`npx expo install --check` no marca `typescript`** → esta en `expo.install.exclude` de
+  `package.json` a proposito. El SDK 57 espera TypeScript 6, que es un salto mayor y puede
+  sacar errores de tipos nuevos en todo el codigo; nos quedamos en 5.9 hasta haber corrido la
+  app al menos una vez. Para subirlo: sacarlo del `exclude` y `npx expo install typescript -- -D`.

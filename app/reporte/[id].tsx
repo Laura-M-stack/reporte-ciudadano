@@ -7,8 +7,7 @@
  * el motivo si fue rechazado, el QR para el mostrador y el boton de sumarse.
  * Lo que ve ademas el operador: el bloque de gestion (AccionesOperador).
  */
-import { Stack } from 'expo-router';
-import { useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Image, Modal, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -68,6 +67,8 @@ export default function DetalleReporte() {
   }, [id]);
 
   useEffect(() => {
+    // El reset de estado antes del await es intencional (limpia el error previo al recargar); cuesta un render extra al montar.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void cargar();
   }, [cargar]);
 

@@ -69,6 +69,8 @@ export default function Bandeja() {
   }, []);
 
   useEffect(() => {
+    // El reset de estado antes del await es intencional (limpia el error previo al recargar); cuesta un render extra al montar.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void cargar();
   }, [cargar]);
 
@@ -159,7 +161,7 @@ export default function Bandeja() {
         />
       </View>
 
-      {error && <EstadoError error={error} alReintentar={cargar} />}
+      {error ? <EstadoError error={error} alReintentar={cargar} /> : null}
       {!error && !reportes && <EstadoCarga texto="Cargando reportes..." />}
       {!error && reportes && visibles.length === 0 && (
         <EstadoVacio

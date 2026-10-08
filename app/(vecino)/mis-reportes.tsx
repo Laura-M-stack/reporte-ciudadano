@@ -56,6 +56,8 @@ export default function MisReportes() {
   }, [usuario]);
 
   useEffect(() => {
+    // El reset de estado antes del await es intencional (limpia el error previo al recargar); cuesta un render extra al montar.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void cargar();
     // La cola avisa sola cuando cambia: no hace falta refrescar a mano despues de encolar.
     return cola.suscribir((items) => {
