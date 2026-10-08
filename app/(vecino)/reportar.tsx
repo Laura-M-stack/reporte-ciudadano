@@ -29,7 +29,12 @@ import { listarTiposDeReporte, listarZonas } from '@/servicios/catalogos';
 import { cola } from '@/servicios/cola';
 import * as haptica from '@/servicios/haptica';
 import { adherirseAReporte, reportesCercaDe } from '@/servicios/reportes';
-import { DIRECCION_SIN_RESOLVER, direccionDe, ubicacionActual } from '@/servicios/ubicacion';
+import {
+  DIRECCION_SIN_RESOLVER,
+  PUNTOS_DE_PRUEBA,
+  direccionDe,
+  ubicacionActual,
+} from '@/servicios/ubicacion';
 import { colores, espacio, radios, tipografia } from '@/tema';
 import type { AdjuntoLocal, Coordenadas, Reporte, TipoDeReporte, Zona } from '@/tipos';
 import { RADIO_DUPLICADOS_M, distanciaEnMetros, formatearDistancia, zonaIdDePunto } from '@/utils';
@@ -355,6 +360,30 @@ export default function Reportar() {
       )}
       <Parrafo>{direccion}</Parrafo>
       <SelectorUbicacion punto={punto} alMover={(c) => void moverPunto(c)} />
+
+      {/*
+        Solo en desarrollo. El equipo esta repartido en cuatro provincias y ninguno vive en
+        Gualeguaychú: sin estos atajos no hay forma de probar la asignación de zona ni la
+        detección de duplicados a 50 m, que solo funcionan dentro del ejido.
+        `__DEV__` es false en el APK de entrega, asi que esta fila no se ve ahi.
+      */}
+      {__DEV__ && (
+        <View style={estilos.pruebas}>
+          <Parrafo suave>Solo en desarrollo: saltar a un punto de Gualeguaychú</Parrafo>
+          <View style={estilos.grillaPruebas}>
+            {PUNTOS_DE_PRUEBA.map((p) => (
+              <Pressable
+                key={p.nombre}
+                onPress={() => void moverPunto(p.punto)}
+                accessibilityRole="button"
+                style={estilos.chipPrueba}
+              >
+                <Text style={estilos.chipPruebaTexto}>{p.nombre}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
       <Parrafo suave>
         {punto
           ? 'Si el punto no quedó bien, tocá el mapa o arrastrá el marcador.'
@@ -463,6 +492,26 @@ const estilos = StyleSheet.create({
   },
   quitar: { minHeight: 44, justifyContent: 'center', alignItems: 'center' },
   quitarTexto: { ...tipografia.cuerpo, color: colores.error, textDecorationLine: 'underline' },
+
+  pruebas: {
+    gap: espacio.sm,
+    padding: espacio.sm,
+    borderRadius: radios.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colores.bordeFuerte,
+  },
+  grillaPruebas: { flexDirection: 'row', flexWrap: 'wrap', gap: espacio.sm },
+  chipPrueba: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: espacio.md,
+    borderRadius: radios.completo,
+    borderWidth: 1,
+    borderColor: colores.bordeFuerte,
+    backgroundColor: colores.superficie,
+  },
+  chipPruebaTexto: { ...tipografia.chico, color: colores.textoSuave },
 
   duplicados: {
     gap: espacio.sm,

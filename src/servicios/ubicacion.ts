@@ -78,6 +78,27 @@ export async function ubicacionActual(): Promise<ResultadoUbicacion> {
   }
 }
 
+/**
+ * Puntos de prueba dentro de Gualeguaychú, SOLO para desarrollo.
+ *
+ * Por qué existen: el equipo esta repartido en cuatro provincias y ninguno vive en
+ * Gualeguaychú, pero la asignación de zona (point-in-polygon) y la detección de duplicados
+ * a 50 m solo tienen sentido dentro del ejido. Sin esto no se pueden probar esas dos reglas,
+ * que son el corazón de la app.
+ *
+ * Las pantallas que los usan los muestran únicamente cuando `__DEV__` es true, así que no
+ * viajan al APK de entrega. Las coordenadas caen dentro de las franjas de `src/mocks/zonas.ts`
+ * (ver S-06: son zonas inventadas hasta que la Municipalidad mande los límites reales).
+ */
+export const PUNTOS_DE_PRUEBA: { nombre: string; punto: Coordenadas }[] = [
+  { nombre: 'Zona Norte', punto: { latitud: -32.975, longitud: -58.52 } },
+  { nombre: 'Zona Centro', punto: { latitud: -33.0, longitud: -58.515 } },
+  { nombre: 'Zona Sur', punto: { latitud: -33.025, longitud: -58.51 } },
+  { nombre: 'Costanera', punto: { latitud: -33.055, longitud: -58.5 } },
+  // Cae fuera de las cuatro franjas: sirve para probar el supuesto S-05 (reporte sin zona).
+  { nombre: 'Fuera de zona', punto: { latitud: -33.2, longitud: -58.6 } },
+];
+
 /** Texto que se muestra cuando no se pudo resolver la calle. S-03. */
 export const DIRECCION_SIN_RESOLVER = 'Punto marcado en el mapa';
 

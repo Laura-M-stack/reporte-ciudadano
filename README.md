@@ -61,7 +61,15 @@ El orden importa: va de lo que más chance tiene de fallar a lo que menos.
    "pendiente de envío", sin código de seguimiento. Al volver la señal se sube solo.
 4. **Duplicados**: crear un reporte del mismo tipo a menos de 50 m de uno existente. Tiene que
    ofrecer sumarse en vez de crear otro.
-5. **Mapa.** Si sale gris, falta la clave de Google Maps, no es un bug.
+5. **Mapa.** Si sale en blanco con el logo de Google en una esquina, no bajaron los
+   mosaicos: ver "Problemas comunes".
+
+> **Ninguna del equipo vive en Gualeguaychú**, y la asignación de zona y la detección de
+> duplicados a 50 m solo funcionan dentro del ejido. Por eso la pantalla de nuevo reporte
+> tiene, **solo en desarrollo**, una fila de atajos ("Zona Norte", "Centro", "Sur",
+> "Costanera", "Fuera de zona") que mueven el punto a coordenadas reales de la ciudad.
+> Están en `PUNTOS_DE_PRUEBA` (`src/servicios/ubicacion.ts`) y se muestran bajo `__DEV__`,
+> así que no aparecen en el APK. Con "Fuera de zona" se prueba el supuesto S-05.
 6. **Como operadora**: cambiar un estado con comentario, intentar rechazar sin motivo (tiene
    que negarse), asignar una cuadrilla.
 7. **Cerrar y reabrir la app.** La sesión tiene que sobrevivir.
@@ -109,7 +117,7 @@ Dos salvedades del alineamiento actual:
 
 | Dónde | Qué | Quién |
 | --- | --- | --- |
-| `app.json` → `android.config.googleMaps.apiKey` | Clave de Google Maps. Sin esto el mapa sale **gris en el APK** aunque en Expo Go se vea bien. | B |
+| `app.json` → plugin `react-native-maps` → `androidGoogleMapsApiKey` | Clave de Google Maps. Sin esto el mapa sale en blanco **en el APK**. Hay que habilitar "Maps SDK for Android" en Google Cloud. | B |
 | `app.json` → `extra.eas.projectId` | Lo completa `eas build:configure`. | B |
 | `.env` → `EXPO_PUBLIC_API_URL` | Cuando la cátedra publique la API. | quien la reciba |
 
@@ -438,8 +446,15 @@ Estas son las que conviene mandar juntas, antes de seguir. Las cuatro primeras b
   `npx expo install --fix`.
 - **Los tests tiran `Unexpected token 'export'`** → el `transformIgnorePatterns` de
   `jest.config.js` quedó mal cerrado. El paréntesis del grupo negado cierra al final.
-- **El mapa sale gris en el APK pero se ve en Expo Go** → falta la clave de Google Maps en
-  `app.json`.
+- **El mapa sale en blanco (solo el logo de Google) o gris** → el componente montó pero no
+  bajaron los mosaicos. En el **APK** es la clave de Google Maps: va en el plugin
+  `react-native-maps` de `app.json`, en `androidGoogleMapsApiKey` — **no** en
+  `android.config.googleMaps.apiKey`, que era donde estaba al principio y el SDK 57 ignora.
+  Hay que habilitar "Maps SDK for Android" en Google Cloud y restringir la clave al
+  `android.package` y al SHA-1 del proyecto. En **Expo Go** no hace falta clave propia: si ahí
+  igual sale en blanco, probar a esperar unos segundos, recargar con `r`, y confirmar que el
+  teléfono tenga datos. Si persiste, hacer una development build, que es donde la clave propia
+  ya aplica.
 - **`Cannot find module 'expo-sqlite'` en un test** → un test está tocando la capa de datos.
   Los tests de cola usan `crearRepositorioEnMemoria()`, no SQLite.
 - **ESLint se queja al importar algo de `src/mocks` o `src/datos` en una pantalla** → no es un

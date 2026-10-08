@@ -15,9 +15,6 @@
       "bundleIdentifier": "ar.gob.gualeguaychu.reporteciudadano",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "config": {
-        "googleMapsApiKey": "REEMPLAZAR_API_KEY_IOS"
       }
     },
     "android": {
@@ -37,12 +34,7 @@
         "android.permission.VIBRATE",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.ACCESS_NETWORK_STATE"
-      ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "REEMPLAZAR_API_KEY_ANDROID"
-        }
-      }
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -99,6 +91,12 @@
         "expo-audio",
         {
           "microphonePermission": "Reporte Ciudadano usa el microfono para grabar la descripcion hablada del problema."
+        }
+      ],
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": "REEMPLAZAR_API_KEY_ANDROID"
         }
       ]
     ],
