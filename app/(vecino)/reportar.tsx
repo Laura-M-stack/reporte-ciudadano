@@ -359,6 +359,16 @@ export default function Reportar() {
         />
       )}
       <Parrafo>{direccion}</Parrafo>
+      {/*
+        Las coordenadas a la vista: mientras el mapa no renderice son la unica forma de
+        confirmar que el punto es el correcto. Tambien sirven para leerlas en voz alta al
+        reportar un problema del propio mapa.
+      */}
+      {!!punto && (
+        <Parrafo suave>
+          {punto.latitud.toFixed(5)}, {punto.longitud.toFixed(5)}
+        </Parrafo>
+      )}
       <SelectorUbicacion punto={punto} alMover={(c) => void moverPunto(c)} />
 
       {/*
@@ -371,16 +381,27 @@ export default function Reportar() {
         <View style={estilos.pruebas}>
           <Parrafo suave>Solo en desarrollo: saltar a un punto de Gualeguaychú</Parrafo>
           <View style={estilos.grillaPruebas}>
-            {PUNTOS_DE_PRUEBA.map((p) => (
-              <Pressable
-                key={p.nombre}
-                onPress={() => void moverPunto(p.punto)}
-                accessibilityRole="button"
-                style={estilos.chipPrueba}
-              >
-                <Text style={estilos.chipPruebaTexto}>{p.nombre}</Text>
-              </Pressable>
-            ))}
+            {PUNTOS_DE_PRUEBA.map((p) => {
+              // Se marca el que coincide con el punto actual, para que se vea que el toque
+              // hizo algo: sin el mapa renderizando, no habia ninguna senal.
+              const activo =
+                !!punto &&
+                Math.abs(punto.latitud - p.punto.latitud) < 1e-6 &&
+                Math.abs(punto.longitud - p.punto.longitud) < 1e-6;
+              return (
+                <Pressable
+                  key={p.nombre}
+                  onPress={() => void moverPunto(p.punto)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: activo }}
+                  style={[estilos.chipPrueba, activo && estilos.chipPruebaActivo]}
+                >
+                  <Text style={[estilos.chipPruebaTexto, activo && estilos.chipPruebaTextoActivo]}>
+                    {p.nombre}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
       )}
@@ -512,6 +533,8 @@ const estilos = StyleSheet.create({
     backgroundColor: colores.superficie,
   },
   chipPruebaTexto: { ...tipografia.chico, color: colores.textoSuave },
+  chipPruebaActivo: { backgroundColor: colores.primario, borderColor: colores.primario },
+  chipPruebaTextoActivo: { color: colores.textoInverso, fontWeight: '700' },
 
   duplicados: {
     gap: espacio.sm,

@@ -119,7 +119,23 @@ export async function direccionDe(coordenadas: Coordenadas): Promise<string> {
     const altura = primero.streetNumber?.trim();
     if (calle && altura) return `${calle} ${altura}`;
     if (calle) return calle;
-    if (primero.name?.trim()) return primero.name.trim();
+
+    // `name` suele traer el codigo postal cuando no hay calle (vimos "X0C 0B0"). Un codigo
+    // postal no le dice nada a la cuadrilla que tiene que ir al lugar, asi que lo
+    // descartamos y preferimos barrio o localidad, que al menos ubican.
+    const nombre = primero.name?.trim();
+    const pareceCodigoPostal =
+      !!nombre && (/^[A-Z]\d{4}[A-Z]{3}$/i.test(nombre.replace(/\s/g, '')) ||
+        /^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/i.test(nombre) ||
+        /^\d{4,}$/.test(nombre));
+    if (nombre && !pareceCodigoPostal) return nombre;
+
+    const barrio = primero.district?.trim();
+    const localidad = primero.city?.trim() ?? primero.subregion?.trim();
+    if (barrio && localidad) return `${barrio}, ${localidad}`;
+    if (barrio) return barrio;
+    if (localidad) return localidad;
+
     return DIRECCION_SIN_RESOLVER;
   } catch {
     return DIRECCION_SIN_RESOLVER;
