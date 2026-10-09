@@ -317,25 +317,39 @@ eso todos los servicios devuelven `Promise` y las pantallas ya manejan los tres 
 (`EstadoCarga`, `EstadoVacio`, `EstadoError` en `src/ui`), que es lo que la cátedra verifica
 sobre la app entregada.
 
-### 6. Mapas con OpenStreetMap, no con Google Maps
+### 6. Mapas con Google, y la clave fuera del repositorio
 
-Google Maps en Android exige una clave propia, y para obtenerla hace falta cuenta de Google
-Cloud con facturación habilitada, habilitar "Maps SDK for Android" y restringir la clave al
-paquete y al SHA-1 de cada build. Para una entrega de facultad eso es fricción pura: el mapa
-solo tiene que mostrar calles y marcadores.
+El requisito 5 de la cátedra pide `react-native-maps`, así que no hay alternativa en el
+renderizador. Y en Android `react-native-maps` dibuja con el SDK de Google **aunque se usen
+mosaicos de otro proveedor**: probamos OpenStreetMap con `provider={null}` y `mapType="none"`,
+y el mapa siguió en blanco, porque sin clave válida el SDK no inicializa y no dibuja nada,
+ni siquiera las capas que van encima. Conclusión: la clave de Google es obligatoria.
 
-Con OSM no hace falta clave. `provider={null}` y `mapType="none"` apagan el mapa base, y los
-mosaicos los dibuja `<UrlTile>`. Está centralizado en `src/componentes/MapaOSM.tsx`.
+**La clave no se escribe en `app.json`.** Este repositorio es público: una clave commiteada
+la puede levantar cualquiera y usarla contra la cuenta de Google Cloud de quien la creó. Por
+eso existe `app.config.js`, que la lee de la variable de entorno
+`GOOGLE_MAPS_API_KEY_ANDROID` y la inyecta en el plugin de `react-native-maps` al compilar.
+Si la variable no está, la app igual arranca; solo que el mapa se ve en blanco y la consola
+lo avisa.
 
-Dos cosas que vienen con esa decisión y no son negociables:
+Las tres protecciones, en orden de importancia:
 
-- **La atribución "© OpenStreetMap" es obligatoria.** Los datos están bajo licencia ODbL, que
-  exige acreditar a los colaboradores de forma visible. Por eso `<AtribucionOSM />` va en las
-  dos pantallas con mapa.
-- **El servidor público de mosaicos tiene una
-  [política de uso](https://operations.osmfoundation.org/policies/tiles/)**: sirve para
-  tráfico modesto, no para una app masiva. Para la entrega y la defensa alcanza. Si la
-  Municipalidad la pusiera en producción, habría que pasar a un proveedor de mosaicos propio.
+1. **No commitearla.** Va en `.env` (que está en `.gitignore`) y, para los builds, como
+   secreto de EAS:
+   `eas secret:create --scope project --name GOOGLE_MAPS_API_KEY_ANDROID --value <la-clave>`
+2. **Restringirla** en Google Cloud a aplicaciones Android, con el paquete
+   `ar.gob.gualeguaychu.reporteciudadano` y la huella SHA-1 del keystore (`eas credentials`).
+   Así, una clave filtrada no le sirve a nadie.
+3. **Tope de cuota y alerta de presupuesto** en Google Cloud, como última red.
+
+Sobre el costo: el SKU **"Maps SDK"**, que es el de las apps nativas, figura en la lista de
+precios de Google como *Unlimited*, sin cargo. El que tiene tope de 10.000 por mes es
+*Dynamic Maps*, el mapa de JavaScript para web, que esta app no usa. Google igual exige
+asociar una forma de pago para habilitar la API.
+
+**La clave no tiene efecto en Expo Go**, que usa su propio manifiesto y no el de la app. El
+mapa recién se ve en una development build o en el APK. Lo mismo vale para las
+notificaciones: **una sola build desbloquea los requisitos 5 y 6**.
 
 ### 7. Diseño pensado para el público del PRD
 
@@ -466,11 +480,16 @@ Estas son las que conviene mandar juntas, antes de seguir. Las cuatro primeras b
   `npx expo install --fix`.
 - **Los tests tiran `Unexpected token 'export'`** → el `transformIgnorePatterns` de
   `jest.config.js` quedó mal cerrado. El paréntesis del grupo negado cierra al final.
-- **El mapa sale en blanco** → los mapas usan mosaicos de **OpenStreetMap**, no de Google.
-  La configuración está en `src/componentes/MapaOSM.tsx` y la usan las dos pantallas con
-  mapa. Si no se ven los mosaicos, revisar que el teléfono tenga datos y que
-  `tile.openstreetmap.org` sea alcanzable. **La atribución "© OpenStreetMap" no se saca**:
-  la licencia ODbL la exige.
+- **El mapa sale en blanco** → falta la clave de Google Maps, o estás en Expo Go. En **Expo
+  Go el mapa no se ve y no hay forma de arreglarlo desde el código**: Expo Go usa su propio
+  manifiesto, así que la clave de la app no se aplica. Hay que hacer una development build o
+  el APK. Si ya estás en una build propia y sigue en blanco: revisar que
+  `GOOGLE_MAPS_API_KEY_ANDROID` esté definida (la consola lo avisa al arrancar), que la clave
+  tenga habilitado "Maps SDK for Android" y que sus restricciones incluyan el paquete
+  `ar.gob.gualeguaychu.reporteciudadano` y el SHA-1 de **esa** build (el de desarrollo y el de
+  release son distintos).
+- **Probar el mapa y las notificaciones** → ninguno de los dos funciona en Expo Go. Una
+  development build resuelve los dos: `eas build --profile development --platform android`.
 - **`Cannot find module 'expo-sqlite'` en un test** → un test está tocando la capa de datos.
   Los tests de cola usan `crearRepositorioEnMemoria()`, no SQLite.
 - **ESLint se queja al importar algo de `src/mocks` o `src/datos` en una pantalla** → no es un

@@ -92,12 +92,6 @@
         {
           "microphonePermission": "Reporte Ciudadano usa el microfono para grabar la descripcion hablada del problema."
         }
-      ],
-      [
-        "react-native-maps",
-        {
-          "androidGoogleMapsApiKey": "REEMPLAZAR_API_KEY_ANDROID"
-        }
       ]
     ],
     "experiments": {

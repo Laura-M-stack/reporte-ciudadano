@@ -11,7 +11,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import { listarTiposDeReporte } from '@/servicios/catalogos';
 import { listarReportes } from '@/servicios/reportes';
@@ -25,7 +25,6 @@ import {
   type Reporte,
   type TipoDeReporte,
 } from '@/tipos';
-import { AtribucionOSM, URL_MOSAICOS_OSM, ZOOM_MAXIMO_OSM } from '@/componentes/MapaOSM';
 import { EstadoCarga, EstadoError, EstadoVacio, Parrafo } from '@/ui';
 
 /** Zoom inicial: la ciudad entera entra a esta escala. */
@@ -90,13 +89,8 @@ export default function Mapa() {
 
   return (
     <View style={estilos.pantalla}>
-      {/* El contenedor da el marco para posicionar la atribucion sobre el mapa y no
-          sobre el panel de filtros, que va debajo. */}
-      <View style={estilos.contenedorMapa}>
-        <MapView
-        // Sin proveedor y sin mapa base: los mosaicos los pone OSM (ver MapaOSM.tsx).
-        provider={null}
-        mapType="none"
+      <MapView
+        provider={PROVIDER_GOOGLE}
         style={estilos.mapa}
         showsUserLocation={!!yo}
         initialRegion={{
@@ -106,7 +100,6 @@ export default function Mapa() {
           longitudeDelta: yo ? 0.02 : DELTA_CIUDAD,
         }}
       >
-        <UrlTile urlTemplate={URL_MOSAICOS_OSM} maximumZ={ZOOM_MAXIMO_OSM} />
         {visibles.map((reporte) => (
           <Marker
             key={reporte.id}
@@ -123,9 +116,7 @@ export default function Mapa() {
             }
           />
         ))}
-        </MapView>
-        <AtribucionOSM />
-      </View>
+      </MapView>
 
       <View style={estilos.panel}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.chips}>
@@ -196,7 +187,6 @@ function Chip({
 
 const estilos = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: colores.fondo },
-  contenedorMapa: { flex: 1 },
   mapa: { flex: 1 },
   relleno: { padding: espacio.md },
   panel: {
