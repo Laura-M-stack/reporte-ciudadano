@@ -100,8 +100,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "REEMPLAZAR_PROJECT_ID"
+        "projectId": "bb57d855-9c24-4291-a36f-663271f7020a"
       }
-    }
+    },
+    "owner": "laura-m"
   }
 }
