@@ -50,15 +50,13 @@ export function AccionesOperador({
 
   useEffect(() => {
     // Solo las cuadrillas de la zona del reporte: asignar una cuadrilla de la otra punta
-    // de la ciudad es un error caro y evitable. Fuera de zona no hay cuadrilla que buscar.
-    if (sinZonaUtilizable) {
-      setCuadrillas([]);
-      return;
-    }
+    // de la ciudad es un error caro y evitable. No hace falta un caso aparte para
+    // ID_FUERA_DE_ZONA: no matchea ninguna cuadrilla real, asi que el filtro normal ya da
+    // una lista vacia (y el setState queda dentro del .then, no sincronico en el efecto).
     void listarCuadrillas(reporte.zonaId)
       .then((lista) => setCuadrillas(lista.filter((c) => c.activa)))
       .catch(() => setCuadrillas([]));
-  }, [reporte.zonaId, sinZonaUtilizable]);
+  }, [reporte.zonaId]);
 
   async function guardarCambio() {
     setError(null);

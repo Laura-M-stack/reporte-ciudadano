@@ -7,7 +7,7 @@
  * el motivo si fue rechazado, el QR para el mostrador y el boton de sumarse.
  * Lo que ve ademas el operador: el bloque de gestion (AccionesOperador).
  */
-import { Link, Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Image, Modal, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -50,6 +50,7 @@ function contenidoQr(reporte: Reporte): string {
 
 export default function DetalleReporte() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const { usuario, esOperador } = useSesion();
 
   const [reporte, setReporte] = useState<Reporte | null>(null);
@@ -140,14 +141,17 @@ export default function DetalleReporte() {
         )}
 
         {/* P-07: el duplicado queda rechazado pero sigue siendo accesible, con un enlace
-            directo al original, para que quien lo reporto pueda seguir las novedades ahi. */}
+            directo al original, para que quien lo reporto pueda seguir las novedades ahi.
+            router.push en vez de <Link asChild>: Boton no reenvia el onPress que Link le
+            inyectaria, asi que con asChild el toque no navegaba. */}
         {!!reporte.duplicadoDe && (
-          <Link
-            href={{ pathname: '/reporte/[id]', params: { id: reporte.duplicadoDe } }}
-            asChild
-          >
-            <Boton titulo="Ver el reporte original" variante="secundario" />
-          </Link>
+          <Boton
+            titulo="Ver el reporte original"
+            variante="secundario"
+            alTocar={() =>
+              router.push({ pathname: '/reporte/[id]', params: { id: reporte.duplicadoDe! } })
+            }
+          />
         )}
 
         {!!accionError && <Aviso texto={accionError} tono="error" />}
