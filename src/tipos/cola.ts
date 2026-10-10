@@ -38,8 +38,12 @@ export interface BorradorReporte {
   coordenadas: Coordenadas;
   /** Puede ser "Sin direccion (punto marcado en el mapa)" si no hubo geocodificacion. Ver S-03. */
   direccion: string;
-  /** Calculado offline con puntoEnPoligono. null si el punto cae fuera de las 4 zonas (S-05). */
-  zonaId: string | null;
+  /**
+   * Calculado offline con zonaIdDePunto. Siempre viene con un valor: el id de una de las 4
+   * zonas, o ID_FUERA_DE_ZONA si el punto no cae dentro de ninguna ni lo bastante cerca
+   * (S-14, responde P-06). Reemplaza al S-05 original, que dejaba esto en null.
+   */
+  zonaId: string;
   adjuntos: AdjuntoLocal[];
   /** Si el vecino eligio sumarse a un reporte cercano en vez de crear uno nuevo. */
   adhiereAReporteId: string | null;

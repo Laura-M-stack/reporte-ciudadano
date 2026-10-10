@@ -7,7 +7,7 @@
  * el motivo si fue rechazado, el QR para el mostrador y el boton de sumarse.
  * Lo que ve ademas el operador: el bloque de gestion (AccionesOperador).
  */
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Link, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Image, Modal, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -17,7 +17,12 @@ import { ReproductorAudio } from '@/componentes/Audio';
 import { useSesion } from '@/contexto/ContextoSesion';
 import { mensajeParaUsuario } from '@/errores';
 import * as haptica from '@/servicios/haptica';
-import { adherirseAReporte, historialDeReporte, obtenerReporte } from '@/servicios/reportes';
+import {
+  adherirseAReporte,
+  historialDeReporte,
+  obtenerReporte,
+  yaAdherido,
+} from '@/servicios/reportes';
 import { colores, espacio, radios } from '@/tema';
 import { ETIQUETAS_ESTADO, type CambioDeEstado, type Reporte } from '@/tipos';
 import { formatearFechaHora } from '@/utils';
@@ -53,6 +58,7 @@ export default function DetalleReporte() {
   const [accionError, setAccionError] = useState<string | null>(null);
   const [qrVisible, setQrVisible] = useState(false);
   const [sumando, setSumando] = useState(false);
+  const [sumado, setSumado] = useState(false);
 
   const cargar = useCallback(async () => {
     if (!id) return;
@@ -61,10 +67,16 @@ export default function DetalleReporte() {
       const [datos, cambios] = await Promise.all([obtenerReporte(id), historialDeReporte(id)]);
       setReporte(datos);
       setHistorial(cambios);
+      // S-13: si ya estaba sumado, el boton tiene que decirlo en vez de dejar que
+      // intente sumarse de nuevo y se encuentre con el error recien al tocarlo.
+      if (usuario && usuario.id !== datos.autorId) {
+        setSumado(await yaAdherido(datos.id, usuario.id));
+      }
     } catch (e) {
       setError(e);
     }
-  }, [id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, usuario?.id]);
 
   useEffect(() => {
     // El reset de estado antes del await es intencional (limpia el error previo al recargar); cuesta un render extra al montar.
@@ -73,12 +85,13 @@ export default function DetalleReporte() {
   }, [cargar]);
 
   async function sumarme() {
-    if (!reporte) return;
+    if (!reporte || !usuario) return;
     setAccionError(null);
     setSumando(true);
     try {
-      const actualizado = await adherirseAReporte(reporte.id);
+      const actualizado = await adherirseAReporte(reporte.id, usuario.id);
       setReporte(actualizado);
+      setSumado(true);
       void haptica.confirmarEnvio();
     } catch (e) {
       setAccionError(mensajeParaUsuario(e));
@@ -124,6 +137,17 @@ export default function DetalleReporte() {
                 : 'Rechazado. Si no dice por que, consultá en el Centro de Atención al Vecino.'
             }
           />
+        )}
+
+        {/* P-07: el duplicado queda rechazado pero sigue siendo accesible, con un enlace
+            directo al original, para que quien lo reporto pueda seguir las novedades ahi. */}
+        {!!reporte.duplicadoDe && (
+          <Link
+            href={{ pathname: '/reporte/[id]', params: { id: reporte.duplicadoDe } }}
+            asChild
+          >
+            <Boton titulo="Ver el reporte original" variante="secundario" />
+          </Link>
         )}
 
         {!!accionError && <Aviso texto={accionError} tono="error" />}
@@ -196,9 +220,10 @@ export default function DetalleReporte() {
 
         {!esMio && !esOperador && reporte.estado !== 'resuelto' && (
           <Boton
-            titulo="Me pasa lo mismo, sumarme"
+            titulo={sumado ? 'Ya te sumaste a este reclamo' : 'Me pasa lo mismo, sumarme'}
             alTocar={() => void sumarme()}
             cargando={sumando}
+            deshabilitado={sumado}
           />
         )}
 

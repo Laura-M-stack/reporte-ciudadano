@@ -19,12 +19,14 @@ import {
   leerReportes,
 } from '../datos/reportesCache';
 import {
+  ADHESIONES,
   CAMBIOS_DE_ESTADO,
   DEMORA_MOCK_MS,
   REPORTES,
   fallasSimuladas,
 } from '../mocks';
 import type {
+  Adhesion,
   BorradorReporte,
   CambioDeEstado,
   Coordenadas,
@@ -238,9 +240,11 @@ function reporteSimulado(
       .map((a) => ({ id: a.id, url: a.urlRemota ?? a.uri, momento: a.momento })),
     coordenadas: borrador.coordenadas,
     direccion: borrador.direccion,
-    // SUPUESTO S-05: si el punto cayo fuera de las 4 zonas, el reporte se envia igual y lo
-    // clasifica el operador. El tipo del PRD no admite null, asi que va cadena vacia.
-    zonaId: borrador.zonaId ?? '',
+    // SUPUESTO S-14 (responde P-06, reemplaza al S-05 original): zonaIdDePunto ya resuelve
+    // esto offline — intenta la zona exacta, despues la mas cercana si esta a menos de
+    // UMBRAL_CERCANIA_ZONA_M, y si no hay ninguna devuelve ID_FUERA_DE_ZONA. El reporte se
+    // envia igual en los tres casos; el operador puede reasignar la zona desde la bandeja.
+    zonaId: borrador.zonaId,
     estado: 'recibido',
     autorId,
     cuadrillaId: null,
@@ -284,8 +288,15 @@ export async function reportesCercaDe(
   }
 }
 
-/** El vecino se suma a un reporte existente en vez de crear otro. */
-export async function adherirseAReporte(reporteId: string): Promise<Reporte> {
+/**
+ * El vecino se suma a un reporte existente en vez de crear otro.
+ *
+ * SUPUESTO S-13 (responde P-04): ademas de subir el contador, crea una Adhesion propia
+ * para saber quien se sumo y para poder rechazar que el mismo vecino sume dos veces. El
+ * reporte se muta en el mock (no se devuelve una copia suelta): es el mismo criterio que
+ * ya usa crearReporte ("el mock tiene que comportarse como un servidor: lo que crea, queda").
+ */
+export async function adherirseAReporte(reporteId: string, usuarioId: string): Promise<Reporte> {
   if (!hayApi()) {
     await demorar(DEMORA_MOCK_MS);
     fallasSimuladas.verificar();
@@ -293,9 +304,62 @@ export async function adherirseAReporte(reporteId: string): Promise<Reporte> {
     if (!reporte) {
       throw new ErrorServicio(CODIGOS.NO_ENCONTRADO, 'No encontramos ese reporte.');
     }
-    return { ...reporte, adhesiones: reporte.adhesiones + 1 };
+    const repetida = ADHESIONES.some(
+      (a) => a.reporteId === reporteId && a.usuarioId === usuarioId,
+    );
+    if (repetida) {
+      throw new ErrorServicio(CODIGOS.YA_ADHERIDO, 'Ya te sumaste a este reclamo.');
+    }
+    const adhesion: Adhesion = {
+      id: `adh-${nuevoUuid().slice(0, 8)}`,
+      reporteId,
+      usuarioId,
+      fechaHora: ahoraIso(),
+    };
+    ADHESIONES.push(adhesion);
+    reporte.adhesiones += 1;
+    return reporte;
   }
   return pedir<Reporte>(`/reportes/${reporteId}/adhesiones`, { metodo: 'POST' });
+}
+
+/** Si este vecino ya esta adherido a este reporte (para deshabilitar el boton "sumarme"). */
+export async function yaAdherido(reporteId: string, usuarioId: string): Promise<boolean> {
+  if (!hayApi()) {
+    await demorar(DEMORA_MOCK_MS);
+    return ADHESIONES.some((a) => a.reporteId === reporteId && a.usuarioId === usuarioId);
+  }
+  // Pendiente de confirmar con la API real: lo ideal es que /reportes/:id ya traiga este
+  // dato (ej. "yaAdherido": true) en vez de necesitar una consulta aparte por cada reporte.
+  try {
+    const reporte = await pedir<Reporte & { yaAdherido?: boolean }>(`/reportes/${reporteId}`);
+    return reporte.yaAdherido ?? false;
+  } catch {
+    return false;
+  }
+}
+
+/** Reportes de OTROS vecinos a los que este vecino se sumo ("me pasa lo mismo"). */
+export async function misAdhesiones(usuarioId: string): Promise<Reporte[]> {
+  if (!hayApi()) {
+    await demorar(DEMORA_MOCK_MS);
+    const idsSumados = new Set(
+      ADHESIONES.filter((a) => a.usuarioId === usuarioId).map((a) => a.reporteId),
+    );
+    return ordenarNuevosPrimero(REPORTES.filter((r) => idsSumados.has(r.id)));
+  }
+  try {
+    const { datos } = await pedirCompleto<Reporte[]>('/reportes', {
+      parametros: { adheridoPor: usuarioId },
+    });
+    return datos;
+  } catch (e) {
+    const error = comoErrorServicio(e);
+    if (error.codigo === CODIGOS.SIN_CONEXION || error.codigo === CODIGOS.TIEMPO_AGOTADO) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 export interface CambioSolicitado {
@@ -378,7 +442,21 @@ export async function subirFotoDeArreglo(reporteId: string, uriLocal: string): P
   return pedir<Reporte>(`/reportes/${reporteId}/fotos`, { metodo: 'POST', formulario });
 }
 
-/** Marca un reporte como duplicado de otro (solo operador). */
+/**
+ * Marca un reporte como duplicado de otro (solo operador).
+ *
+ * Comportamiento resuelto en el foro (P-07): el duplicado (A) pasa a "rechazado" con un
+ * comentario que referencia al original (B) — no queda en limbo ni se borra, pero deja de
+ * ser un reclamo vigente aparte. El original (B) suma la adhesion de A, porque es el mismo
+ * problema contado dos veces. El mapa publico deja de listar a A de forma independiente
+ * (ver app/(vecino)/mapa.tsx); la bandeja del operador si lo sigue mostrando, con un enlace
+ * a B, porque el operador necesita poder auditar como quedo cada marcado.
+ *
+ * El aviso al autor de A sale solo, por el mismo camino que cualquier otro cambio de
+ * estado (sincronizacion.ts -> avisarCambiosDetectados), que ya detecta que el estado de A
+ * cambio a "rechazado" y lo nota especial por tener duplicadoDe (ver notificaciones.ts).
+ * No hace falta una notificacion aparte ni suscribir a A a los cambios futuros de B.
+ */
 export async function marcarDuplicado(
   reporteId: string,
   duplicadoDe: string,
@@ -394,7 +472,32 @@ export async function marcarDuplicado(
     fallasSimuladas.verificar();
     const reporte = REPORTES.find((r) => r.id === reporteId);
     if (!reporte) throw new ErrorServicio(CODIGOS.NO_ENCONTRADO, 'No encontramos ese reporte.');
-    return { ...reporte, duplicadoDe };
+    const original = REPORTES.find((r) => r.id === duplicadoDe);
+    if (!original) {
+      throw new ErrorServicio(
+        CODIGOS.NO_ENCONTRADO,
+        'No encontramos el reporte original. Revisá el id.',
+      );
+    }
+
+    const comentario = `Es el mismo problema que ${original.codigo}. Lo sumamos a ese reclamo y dejamos de listar este por separado; las novedades las vas a ver en ${original.codigo}.`;
+
+    // Se muta en el mock, no se devuelve una copia suelta: mismo criterio que crearReporte
+    // y adherirseAReporte ("lo que cambia, queda").
+    reporte.duplicadoDe = duplicadoDe;
+    reporte.estado = 'rechazado';
+    original.adhesiones += 1;
+
+    CAMBIOS_DE_ESTADO.push({
+      id: `cam-${nuevoUuid().slice(0, 6)}`,
+      reporteId,
+      estado: 'rechazado',
+      comentario,
+      operadorId: 'usr-003',
+      fechaHora: ahoraIso(),
+    });
+
+    return reporte;
   }
   return pedir<Reporte>(`/reportes/${reporteId}/duplicado`, {
     metodo: 'PATCH',

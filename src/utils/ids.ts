@@ -31,6 +31,19 @@ export function esIdLocal(id: string | null | undefined): boolean {
 }
 
 /**
+ * Código provisorio para mostrar en "Mis reclamos" mientras el reporte sigue en la cola
+ * (responde P-02: la catedra confirmo que SI conviene mostrar algo, no dejar la pantalla
+ * muda). No es el código oficial — ese lo asigna el servidor recien al sincronizar, y
+ * hasta entonces ni existe. Se deriva del propio idLocal para que sea estable: el mismo
+ * reporte pendiente siempre muestra el mismo código, en vez de uno al azar en cada render.
+ */
+export function codigoProvisorio(idLocal: string): string {
+  const sinPrefijo = idLocal.startsWith(PREFIJO_LOCAL) ? idLocal.slice(PREFIJO_LOCAL.length) : idLocal;
+  const soloHex = sinPrefijo.replace(/-/g, '').toUpperCase();
+  return `LOCAL-${soloHex.slice(0, 8)}`;
+}
+
+/**
  * Nombre de archivo estable para un adjunto dentro del directorio de la app.
  * Ej: "local-3f2a....-problema.jpg"
  */

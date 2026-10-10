@@ -9,7 +9,8 @@
  * Todo lo de este archivo esta cubierto por src/utils/__tests__/geo.test.ts.
  */
 import { CODIGOS, ErrorServicio } from '../errores';
-import type { Coordenadas, Reporte, Zona } from '../tipos';
+import { ID_FUERA_DE_ZONA } from '../tipos/zona';
+import type { Coordenadas, EstadoReporte, Reporte, Zona } from '../tipos';
 
 /** Radio medio de la Tierra (IUGG), en metros. */
 export const RADIO_TIERRA_M = 6_371_008.8;
@@ -197,13 +198,73 @@ export function cajaEnvolvente(poligono: Coordenadas[]): {
 }
 
 /**
- * Zona a la que pertenece un punto. Devuelve null si cae fuera de todas
- * (zona rural, el rio, error de GPS grosero). El PRD no contempla ese caso: ver S-05.
+ * Metros por grado, para el mismo plano cartesiano local que ya usa puntoEnPoligono
+ * (SUPUESTO S-04). cosLat ajusta la longitud: cerca de los polos un grado de longitud
+ * pesa menos metros que uno de latitud; en Gualeguaychu (~-33°) ya achica bastante.
+ */
+function aPlanoMetros(punto: Coordenadas, referencia: Coordenadas): { x: number; y: number } {
+  const metrosPorGradoLon = 111_320 * Math.cos(gradosARadianes(referencia.latitud));
+  return {
+    x: punto.longitud * metrosPorGradoLon,
+    y: punto.latitud * 111_320,
+  };
+}
+
+/** Distancia de un punto a un segmento, en metros, sobre el plano local de aPlanoMetros. */
+function distanciaAPuntoSegmentoM(
+  punto: Coordenadas,
+  a: Coordenadas,
+  b: Coordenadas,
+): number {
+  const p = aPlanoMetros(punto, punto);
+  const pa = aPlanoMetros(a, punto);
+  const pb = aPlanoMetros(b, punto);
+  const dx = pb.x - pa.x;
+  const dy = pb.y - pa.y;
+  const largoAlCuadrado = dx * dx + dy * dy;
+  const t =
+    largoAlCuadrado === 0
+      ? 0
+      : Math.max(0, Math.min(1, ((p.x - pa.x) * dx + (p.y - pa.y) * dy) / largoAlCuadrado));
+  const cx = pa.x + t * dx;
+  const cy = pa.y + t * dy;
+  return Math.hypot(p.x - cx, p.y - cy);
+}
+
+/** Distancia minima de un punto al borde de un poligono, en metros. */
+function distanciaAPoligonoM(punto: Coordenadas, poligono: Coordenadas[]): number {
+  const anillo = cerrarAnillo(poligono);
+  let minimo = Infinity;
+  for (let i = 0; i < anillo.length - 1; i++) {
+    const d = distanciaAPuntoSegmentoM(punto, anillo[i]!, anillo[i + 1]!);
+    if (d < minimo) minimo = d;
+  }
+  return minimo;
+}
+
+/**
+ * Umbral para el fallback de zona por cercania (S-14, responde P-06): el profe no dio un
+ * numero exacto ("si cae cerca asignarla a esa zona"), asi que documentamos la eleccion.
+ * 120 m es mas que el radio de duplicados (50 m) porque el error de GPS parado en la
+ * vereda puede ser de varios metros, pero chico para no cruzar nunca a la franja siguiente
+ * (las zonas son franjas de latitud de varios cientos de metros de ancho).
+ */
+export const UMBRAL_CERCANIA_ZONA_M = 120;
+
+/**
+ * Zona a la que pertenece un punto.
  *
- * Si las zonas se solaparan, gana la primera de la lista. Preguntar al cliente (P-06).
+ * Primero busca contencion exacta (ray casting). Si no cae dentro de ninguna, busca la
+ * zona mas cercana por el borde del poligono: si esta a menos de UMBRAL_CERCANIA_ZONA_M,
+ * se la asigna igual (un punto parado justo al borde de la franja no tiene por que quedar
+ * sin zona). Mas lejos que eso (el rio, una ruta fuera del ejido, un error grosero de GPS)
+ * devuelve null: el llamador (zonaIdDePunto) lo traduce a ID_FUERA_DE_ZONA.
+ *
+ * Si las zonas se solaparan, gana la primera de la lista para la contencion exacta.
  */
 export function zonaDePunto(punto: Coordenadas, zonas: Zona[]): Zona | null {
   validarCoordenadas(punto, 'zonaDePunto');
+
   for (const zona of zonas) {
     if (!zona.limite || zona.limite.length < 3) continue;
     const caja = cajaEnvolvente(zona.limite);
@@ -217,12 +278,26 @@ export function zonaDePunto(punto: Coordenadas, zonas: Zona[]): Zona | null {
     }
     if (puntoEnPoligono(punto, zona.limite)) return zona;
   }
-  return null;
+
+  let masCercana: Zona | null = null;
+  let distanciaMinima = Infinity;
+  for (const zona of zonas) {
+    if (!zona.limite || zona.limite.length < 3) continue;
+    const distancia = distanciaAPoligonoM(punto, zona.limite);
+    if (distancia < distanciaMinima) {
+      distanciaMinima = distancia;
+      masCercana = zona;
+    }
+  }
+  return masCercana && distanciaMinima <= UMBRAL_CERCANIA_ZONA_M ? masCercana : null;
 }
 
-/** Igual que zonaDePunto pero devuelve solo el id, que es lo que guarda el reporte. */
-export function zonaIdDePunto(punto: Coordenadas, zonas: Zona[]): string | null {
-  return zonaDePunto(punto, zonas)?.id ?? null;
+/**
+ * Igual que zonaDePunto pero devuelve el id, que es lo que guarda el reporte. Nunca
+ * devuelve null: si no hay zona ni cercana, devuelve ID_FUERA_DE_ZONA (S-14).
+ */
+export function zonaIdDePunto(punto: Coordenadas, zonas: Zona[]): string {
+  return zonaDePunto(punto, zonas)?.id ?? ID_FUERA_DE_ZONA;
 }
 
 export interface ReporteCercano {
@@ -231,11 +306,20 @@ export interface ReporteCercano {
 }
 
 /**
+ * Un reporte resuelto o rechazado no cuenta como "el mismo problema" (respuesta del profe
+ * a P-03): si esta resuelto el problema ya no esta, y si fue rechazado no es un reclamo
+ * vigente contra el que comparar. Unico lugar donde se aplica esta regla, para que la
+ * deteccion online y la offline (leerCercanos, en datos/reportesCache.ts) no se desalineen.
+ */
+const ESTADOS_EXCLUIDOS_DE_DUPLICADOS: readonly EstadoReporte[] = ['resuelto', 'rechazado'];
+
+/**
  * Reportes a menos de `radioM` del punto, del mas cercano al mas lejano.
  * Es lo que alimenta la pantalla "¿es este mismo problema?" antes de crear un reporte.
  *
- * `soloTipoId` permite comparar unicamente contra el mismo tipo de problema; el PRD no
- * lo aclara (P-03), asi que se deja opcional y la pantalla decide.
+ * `soloTipoId` compara unicamente contra el mismo tipo de problema (P-03: "un bache y una
+ * luminaria a 10 m no son el mismo reclamo"). Ademas, sea cual sea el tipo, nunca se
+ * comparan los ya resueltos o rechazados.
  */
 export function reportesCercanos(
   punto: Coordenadas,
@@ -247,6 +331,7 @@ export function reportesCercanos(
   const cercanos: ReporteCercano[] = [];
   for (const reporte of reportes) {
     if (soloTipoId && reporte.tipoId !== soloTipoId) continue;
+    if (ESTADOS_EXCLUIDOS_DE_DUPLICADOS.includes(reporte.estado)) continue;
     if (!sonCoordenadasValidas(reporte.coordenadas)) continue;
     const distanciaM = distanciaEnMetros(punto, reporte.coordenadas);
     if (distanciaM <= radioM) cercanos.push({ reporte, distanciaM });

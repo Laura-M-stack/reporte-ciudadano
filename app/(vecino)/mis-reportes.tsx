@@ -19,11 +19,11 @@ import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSesion } from '@/contexto/ContextoSesion';
 import { mensajeParaUsuario } from '@/errores';
 import { cola } from '@/servicios/cola';
-import { listarMisReportes } from '@/servicios/reportes';
+import { listarMisReportes, misAdhesiones } from '@/servicios/reportes';
 import { refrescarYAvisar } from '@/servicios/sincronizacion';
 import { espacio } from '@/tema';
 import type { Reporte, ReporteEnCola } from '@/tipos';
-import { formatearFechaHora, tiempoRelativo } from '@/utils';
+import { codigoProvisorio, formatearFechaHora, tiempoRelativo } from '@/utils';
 import {
   Aviso,
   Boton,
@@ -39,6 +39,7 @@ import {
 export default function MisReportes() {
   const { usuario } = useSesion();
   const [reportes, setReportes] = useState<Reporte[] | null>(null);
+  const [adheridos, setAdheridos] = useState<Reporte[]>([]);
   const [pendientes, setPendientes] = useState<ReporteEnCola[]>([]);
   const [error, setError] = useState<unknown>(null);
   const [accionError, setAccionError] = useState<string | null>(null);
@@ -48,8 +49,12 @@ export default function MisReportes() {
     if (!usuario) return;
     setError(null);
     try {
-      const pagina = await listarMisReportes(usuario.id);
+      const [pagina, sumados] = await Promise.all([
+        listarMisReportes(usuario.id),
+        misAdhesiones(usuario.id),
+      ]);
       setReportes(pagina.datos);
+      setAdheridos(sumados);
     } catch (e) {
       setError(e);
     }
@@ -144,9 +149,17 @@ export default function MisReportes() {
       {pendientes.map((item) => (
         <Tarjeta key={item.idLocal}>
           <Parrafo>{item.borrador.direccion}</Parrafo>
-          {/* S-07: no mostramos un codigo inventado. El oficial lo asigna el servidor. */}
+          {/*
+            P-02 (resuelto): mostramos un código PROVISORIO derivado del idLocal, no
+            inventado al azar, para que el vecino tenga algo para anotar mientras el
+            reclamo espera señal. El oficial (GCHU-2026-xxxxx) lo asigna el servidor recien
+            al sincronizar; hasta entonces este es el único que existe.
+          */}
           <Parrafo suave>
-            {item.estadoEnvio === 'error' ? 'No se pudo enviar' : 'Pendiente de envío'} ·{' '}
+            {codigoProvisorio(item.idLocal)} · Pendiente de sincronización
+          </Parrafo>
+          <Parrafo suave>
+            {item.estadoEnvio === 'error' ? 'No se pudo enviar' : 'Esperando señal'} ·{' '}
             {tiempoRelativo(item.creadoEn)}
           </Parrafo>
           {!!item.ultimoError && <Parrafo suave>{item.ultimoError.mensaje}</Parrafo>}
@@ -183,6 +196,34 @@ export default function MisReportes() {
           </Pressable>
         </Link>
       ))}
+
+      {/*
+        P-04 (resuelto): ahora que existe la entidad Adhesión, se puede listar a cuales
+        reportes de OTROS vecinos este vecino se sumó. No son suyos, por eso van aparte.
+      */}
+      {adheridos.length > 0 && (
+        <>
+          <Titulo>A los que me sumé</Titulo>
+          {adheridos.map((reporte) => (
+            <Link
+              key={reporte.id}
+              href={{ pathname: '/reporte/[id]', params: { id: reporte.id } }}
+              asChild
+            >
+              <Pressable accessibilityRole="button">
+                <Tarjeta>
+                  <EtiquetaEstado estado={reporte.estado} />
+                  <Parrafo>{reporte.direccion}</Parrafo>
+                  <Parrafo suave>
+                    {reporte.codigo} · {reporte.adhesiones} vecino
+                    {reporte.adhesiones === 1 ? '' : 's'} sumados
+                  </Parrafo>
+                </Tarjeta>
+              </Pressable>
+            </Link>
+          ))}
+        </>
+      )}
     </ScrollView>
   );
 }

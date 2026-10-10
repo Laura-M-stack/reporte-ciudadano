@@ -23,6 +23,7 @@ import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 import { GrabadorAudio } from '@/componentes/Audio';
 import { CapturaFoto } from '@/componentes/CapturaFoto';
 import { SelectorUbicacion } from '@/componentes/SelectorUbicacion';
+import { useSesion } from '@/contexto/ContextoSesion';
 import { mensajeParaUsuario } from '@/errores';
 import { elegirDeGaleria, registrarAudio, registrarFoto } from '@/servicios/adjuntos';
 import { listarTiposDeReporte, listarZonas } from '@/servicios/catalogos';
@@ -37,7 +38,13 @@ import {
 } from '@/servicios/ubicacion';
 import { colores, espacio, radios, tipografia } from '@/tema';
 import type { AdjuntoLocal, Coordenadas, Reporte, TipoDeReporte, Zona } from '@/tipos';
-import { RADIO_DUPLICADOS_M, distanciaEnMetros, formatearDistancia, zonaIdDePunto } from '@/utils';
+import {
+  RADIO_DUPLICADOS_M,
+  codigoProvisorio,
+  distanciaEnMetros,
+  formatearDistancia,
+  zonaIdDePunto,
+} from '@/utils';
 import {
   Aviso,
   Boton,
@@ -55,6 +62,7 @@ const MAX_FOTOS = 2;
 
 export default function Reportar() {
   const router = useRouter();
+  const { usuario } = useSesion();
 
   // Catalogos
   const [tipos, setTipos] = useState<TipoDeReporte[] | null>(null);
@@ -79,7 +87,11 @@ export default function Reportar() {
   const [camaraAbierta, setCamaraAbierta] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [exito, setExito] = useState<{ codigo: string | null; enCola: boolean } | null>(null);
+  const [exito, setExito] = useState<{
+    codigo: string | null;
+    enCola: boolean;
+    idLocal: string;
+  } | null>(null);
 
   const puntoChequeado = useRef<string>('');
 
@@ -126,16 +138,13 @@ export default function Reportar() {
 
     void (async () => {
       try {
-        // SUPUESTO S-11 / pregunta P-03: comparamos contra el MISMO tipo de problema.
-        // Un bache y una luminaria a 10 m no son el mismo reclamo.
+        // P-03 (resuelto en el foro): mismo tipo de problema, y ya resuelto o rechazado no
+        // cuenta. Las dos reglas viven en un solo lugar (reportesCercanos, en
+        // src/utils/geo.ts) para que esta pantalla y la cache offline no se desalineen.
         const encontrados = await reportesCercaDe(punto, RADIO_DUPLICADOS_M, tipoId);
-        // Un reporte ya resuelto o rechazado no es un duplicado: el problema volvio.
-        const vigentes = encontrados.filter(
-          (r) => r.estado !== 'resuelto' && r.estado !== 'rechazado',
-        );
-        setCercanos(vigentes);
+        setCercanos(encontrados);
         setIgnorarCercanos(false);
-        if (vigentes.length > 0) void haptica.avisarDuplicadoCerca();
+        if (encontrados.length > 0) void haptica.avisarDuplicadoCerca();
       } catch {
         // Sin red y sin copia local no hay deteccion de duplicados. No bloquea el reporte.
         setCercanos([]);
@@ -171,9 +180,10 @@ export default function Reportar() {
   }
 
   async function sumarseA(reporte: Reporte) {
+    if (!usuario) return;
     setEnviando(true);
     try {
-      await adherirseAReporte(reporte.id);
+      await adherirseAReporte(reporte.id, usuario.id);
       void haptica.confirmarEnvio();
       router.push({ pathname: '/reporte/[id]', params: { id: reporte.id } });
     } catch (e) {
@@ -220,6 +230,7 @@ export default function Reportar() {
       setExito({
         codigo: guardado?.codigoRemoto ?? null,
         enCola: resultado.enviados === 0,
+        idLocal: item.idLocal,
       });
       limpiar();
     } catch (e) {
@@ -263,13 +274,17 @@ export default function Reportar() {
         <Titulo>Listo, lo recibimos</Titulo>
         {exito.enCola ? (
           <>
-            {/* S-07: no inventamos un codigo. El oficial lo asigna el servidor. */}
+            {/*
+              P-02 (resuelto): mostramos un código PROVISORIO, derivado del idLocal, para
+              que el vecino tenga algo para anotar. El oficial (GCHU-2026-xxxxx) lo asigna
+              el servidor recien al sincronizar.
+            */}
             <Aviso
               tono="alerta"
-              texto="Tu reporte quedó guardado en el teléfono y se va a enviar solo cuando vuelva la señal. No hace falta que hagas nada."
+              texto={`Tu código provisorio es ${codigoProvisorio(exito.idLocal)}. Quedó guardado en el teléfono y se va a enviar solo cuando vuelva la señal. No hace falta que hagas nada.`}
             />
             <Parrafo suave>
-              Cuando se envie vas a ver el número de seguimiento en Mis reclamos.
+              Cuando se sincronice vas a ver el número de seguimiento oficial en Mis reclamos.
             </Parrafo>
           </>
         ) : (

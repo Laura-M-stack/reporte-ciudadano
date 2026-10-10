@@ -7,6 +7,7 @@
  */
 import { CODIGOS, ErrorServicio } from '../errores';
 
+export * from './adhesiones';
 export * from './cuadrillas';
 export * from './reportes';
 export * from './tiposDeReporte';

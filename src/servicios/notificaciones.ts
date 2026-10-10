@@ -158,6 +158,19 @@ export function notificarAdhesion(reporte: Reporte, total: number): Promise<void
   );
 }
 
+/**
+ * El reporte se marco como duplicado de otro (P-07). Mensaje propio en vez del generico
+ * de notificarCambioDeEstado: el vecino no entenderia un seco "Ahora esta: Rechazado" sin
+ * la explicacion de que es porque alguien mas ya habia avisado lo mismo.
+ */
+export function notificarDuplicado(reporte: Reporte): Promise<void> {
+  return avisar(
+    `Tu reclamo ${reporte.codigo}`,
+    'Era el mismo problema que otro reclamo ya en curso. Lo sumamos a ese y dejamos de listar este por separado; las novedades las vas a ver ahí.',
+    { reporteId: reporte.id, tipo: 'duplicado' },
+  );
+}
+
 /** La cola logro subir un reporte que estaba esperando senal. */
 export function notificarReporteEnviado(codigo: string): Promise<void> {
   return avisar(
@@ -181,7 +194,13 @@ export async function avisarCambiosDetectados(
     const anterior = porId.get(actual.id);
     if (!anterior) continue;
     if (anterior.estado !== actual.estado) {
-      await notificarCambioDeEstado(actual, actual.estado);
+      // P-07: si el cambio a "rechazado" fue por marcarlo duplicado, un mensaje especial
+      // en vez del generico — ver notificarDuplicado.
+      if (actual.estado === 'rechazado' && actual.duplicadoDe) {
+        await notificarDuplicado(actual);
+      } else {
+        await notificarCambioDeEstado(actual, actual.estado);
+      }
       avisos++;
     } else if (actual.adhesiones > anterior.adhesiones) {
       await notificarAdhesion(actual, actual.adhesiones);

@@ -142,10 +142,11 @@ describe('encolar', () => {
     expect((error as ErrorServicio).codigo).toBe('TIPO_REQUERIDO');
   });
 
-  it('acepta un reporte cuyo punto cayo fuera de las 4 zonas (S-05)', async () => {
+  it('acepta un reporte cuyo punto cayo fuera de las 4 zonas (S-14, responde P-06)', async () => {
     const { cola } = armar();
-    const item = await cola.encolar(borrador({ zonaId: null }));
-    expect(item.borrador.zonaId).toBe(null);
+    // zonaId ya no admite null: zonaIdDePunto siempre devuelve algo, real o ID_FUERA_DE_ZONA.
+    const item = await cola.encolar(borrador({ zonaId: 'fuera-de-zona' }));
+    expect(item.borrador.zonaId).toBe('fuera-de-zona');
     expect(item.estadoEnvio).toBe('pendiente');
   });
 });

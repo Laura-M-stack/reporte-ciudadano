@@ -70,6 +70,11 @@ export default function Mapa() {
   const visibles = useMemo(() => {
     if (!reportes) return [];
     return reportes.filter((r) => {
+      // P-07 (resuelto): un duplicado no se lista aparte en el mapa publico. Sigue
+      // existiendo y se puede llegar a el desde el detalle del original, pero mostrarlo
+      // tambien como punto propio duplicaria el problema en el mapa, que es justo lo que
+      // esto esta resolviendo.
+      if (r.duplicadoDe) return false;
       if (filtroEstado && r.estado !== filtroEstado) return false;
       if (filtroTipo && r.tipoId !== filtroTipo) return false;
       return true;

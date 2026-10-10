@@ -1,8 +1,10 @@
 import { ErrorServicio, CODIGOS } from '../../errores';
+import { ID_FUERA_DE_ZONA } from '../../tipos/zona';
 import type { Coordenadas, Reporte, Zona } from '../../tipos';
 import {
   RADIO_TIERRA_M,
   RADIO_DUPLICADOS_M,
+  UMBRAL_CERCANIA_ZONA_M,
   cajaEnvolvente,
   distanciaEnMetros,
   estanACercaDe,
@@ -262,13 +264,13 @@ describe('zonaDePunto', () => {
     expect(zonaDePunto(c(-33.03, -58.52), zonas)?.id).toBe('zon-sur');
   });
 
-  it('devuelve null si el punto cae fuera de todas las zonas (S-05)', () => {
+  it('devuelve null si el punto cae lejos de todas las zonas (mas de UMBRAL_CERCANIA_ZONA_M)', () => {
     expect(zonaDePunto(c(-34.6, -58.38), zonas)).toBeNull();
   });
 
-  it('zonaIdDePunto devuelve solo el id o null', () => {
+  it('zonaIdDePunto devuelve el id, o ID_FUERA_DE_ZONA si no hay ninguna cerca', () => {
     expect(zonaIdDePunto(c(-32.97, -58.52), zonas)).toBe('zon-norte');
-    expect(zonaIdDePunto(c(0, 0), zonas)).toBeNull();
+    expect(zonaIdDePunto(c(-34.6, -58.38), zonas)).toBe(ID_FUERA_DE_ZONA);
   });
 
   it('ignora zonas con poligono invalido en vez de romper', () => {
@@ -281,6 +283,38 @@ describe('zonaDePunto', () => {
 
   it('sin zonas devuelve null', () => {
     expect(zonaDePunto(c(-32.97, -58.52), [])).toBeNull();
+  });
+
+  describe('fallback por cercania (S-14, responde P-06)', () => {
+    // zon-norte termina en latitud -32.95. Un punto un poco mas al norte cae afuera del
+    // poligono pero puede estar a pocos metros del borde.
+    const METROS_POR_GRADO = (Math.PI * RADIO_TIERRA_M) / 180;
+
+    it('un punto justo afuera del borde, a menos del umbral, se asigna a la zona mas cercana', () => {
+      const unosMetrosAfuera = c(-32.95 + 20 / METROS_POR_GRADO, -58.52);
+      expect(zonaDePunto(unosMetrosAfuera, zonas)?.id).toBe('zon-norte');
+      expect(zonaIdDePunto(unosMetrosAfuera, zonas)).toBe('zon-norte');
+    });
+
+    it('justo en el borde del umbral entra; un poco mas lejos, no', () => {
+      const dentroDelUmbral = c(
+        -32.95 + (UMBRAL_CERCANIA_ZONA_M - 1) / METROS_POR_GRADO,
+        -58.52,
+      );
+      const fueraDelUmbral = c(
+        -32.95 + (UMBRAL_CERCANIA_ZONA_M + 30) / METROS_POR_GRADO,
+        -58.52,
+      );
+      expect(zonaDePunto(dentroDelUmbral, zonas)?.id).toBe('zon-norte');
+      expect(zonaDePunto(fueraDelUmbral, zonas)).toBeNull();
+      expect(zonaIdDePunto(fueraDelUmbral, zonas)).toBe(ID_FUERA_DE_ZONA);
+    });
+
+    it('con varias zonas, el fallback elige la mas cercana, no la primera de la lista', () => {
+      // Un punto al sur de zon-sur (que termina en -33.05): zon-norte queda mucho mas lejos.
+      const cercaDelSur = c(-33.05 - 20 / METROS_POR_GRADO, -58.52);
+      expect(zonaDePunto(cercaDelSur, zonas)?.id).toBe('zon-sur');
+    });
   });
 });
 
@@ -318,6 +352,14 @@ describe('reportesCercanos (los 50 m del PRD)', () => {
 
   it('respeta un radio custom', () => {
     expect(reportesCercanos(base, reportes, 400)).toHaveLength(3);
+  });
+
+  it('un reporte resuelto o rechazado no cuenta como duplicado (P-03, resuelto en el foro)', () => {
+    const resuelto = { ...reporteEn('rep-resuelto', masCerca), estado: 'resuelto' as const };
+    const rechazado = { ...reporteEn('rep-rechazado', masCerca), estado: 'rechazado' as const };
+    const vigente = reporteEn('rep-vigente', masCerca);
+    const cercanos = reportesCercanos(base, [resuelto, rechazado, vigente]);
+    expect(cercanos.map((r) => r.reporte.id)).toEqual(['rep-vigente']);
   });
 });
 

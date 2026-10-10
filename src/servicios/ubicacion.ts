@@ -95,7 +95,8 @@ export const PUNTOS_DE_PRUEBA: { nombre: string; punto: Coordenadas }[] = [
   { nombre: 'Zona Centro', punto: { latitud: -33.0, longitud: -58.515 } },
   { nombre: 'Zona Sur', punto: { latitud: -33.025, longitud: -58.51 } },
   { nombre: 'Costanera', punto: { latitud: -33.055, longitud: -58.5 } },
-  // Cae fuera de las cuatro franjas: sirve para probar el supuesto S-05 (reporte sin zona).
+  // Cae a mas de 14 km de las cuatro franjas (bien lejos de UMBRAL_CERCANIA_ZONA_M): sirve
+  // para probar el supuesto S-14 (zonaId = ID_FUERA_DE_ZONA).
   { nombre: 'Fuera de zona', punto: { latitud: -33.2, longitud: -58.6 } },
 ];
 

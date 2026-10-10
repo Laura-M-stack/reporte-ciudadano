@@ -27,6 +27,7 @@ export const CODIGOS = {
   TIPO_REQUERIDO: 'TIPO_REQUERIDO',
   UBICACION_REQUERIDA: 'UBICACION_REQUERIDA',
   NO_ENCONTRADO: 'NO_ENCONTRADO',
+  YA_ADHERIDO: 'YA_ADHERIDO',
   // Datos / logica pura
   COORDENADAS_INVALIDAS: 'COORDENADAS_INVALIDAS',
   POLIGONO_INVALIDO: 'POLIGONO_INVALIDO',
@@ -119,6 +120,7 @@ const MENSAJES_AMIGABLES: Partial<Record<string, string>> = {
   [CODIGOS.SIN_PERMISO]: 'Tu cuenta no tiene permiso para hacer esto.',
   [CODIGOS.FOTO_REQUERIDA]: 'El reporte necesita al menos una foto.',
   [CODIGOS.NO_ENCONTRADO]: 'No encontramos ese reporte.',
+  [CODIGOS.YA_ADHERIDO]: 'Ya te sumaste a este reclamo.',
 };
 
 export function mensajeParaUsuario(e: unknown): string {

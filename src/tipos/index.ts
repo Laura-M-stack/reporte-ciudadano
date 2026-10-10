@@ -1,3 +1,4 @@
+export * from './adhesion';
 export * from './api';
 export * from './cola';
 export * from './cuadrilla';

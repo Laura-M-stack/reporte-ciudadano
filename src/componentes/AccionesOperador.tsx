@@ -19,6 +19,7 @@ import { colores, espacio, radios, tipografia } from '../tema';
 import {
   ESTADOS_REPORTE,
   ETIQUETAS_ESTADO,
+  ID_FUERA_DE_ZONA,
   type Cuadrilla,
   type EstadoReporte,
   type Reporte,
@@ -43,13 +44,21 @@ export function AccionesOperador({
   const [aviso, setAviso] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
+  // S-14: zonaId ahora siempre trae algo (una zona real o ID_FUERA_DE_ZONA), asi que para
+  // "sin zona utilizable" hay que comparar contra el sentinel, no contra string vacio.
+  const sinZonaUtilizable = reporte.zonaId === ID_FUERA_DE_ZONA;
+
   useEffect(() => {
     // Solo las cuadrillas de la zona del reporte: asignar una cuadrilla de la otra punta
-    // de la ciudad es un error caro y evitable.
-    void listarCuadrillas(reporte.zonaId || undefined)
+    // de la ciudad es un error caro y evitable. Fuera de zona no hay cuadrilla que buscar.
+    if (sinZonaUtilizable) {
+      setCuadrillas([]);
+      return;
+    }
+    void listarCuadrillas(reporte.zonaId)
       .then((lista) => setCuadrillas(lista.filter((c) => c.activa)))
       .catch(() => setCuadrillas([]));
-  }, [reporte.zonaId]);
+  }, [reporte.zonaId, sinZonaUtilizable]);
 
   async function guardarCambio() {
     setError(null);
@@ -80,7 +89,9 @@ export function AccionesOperador({
     setGuardando(true);
     try {
       await marcarDuplicado(reporte.id, idDuplicado.trim());
-      setAviso('Marcado como duplicado.');
+      // P-07: este reporte pasa a rechazado y el original suma la adhesion; el vecino que
+      // lo hizo se entera solo, al sincronizar (ver src/servicios/notificaciones.ts).
+      setAviso('Marcado como duplicado: este reclamo queda rechazado y la adhesión pasa al original.');
       setIdDuplicado('');
       alCambiar();
     } catch (e) {
@@ -139,7 +150,7 @@ export function AccionesOperador({
           {cuadrillas.length === 0 ? (
             <Parrafo suave>
               No hay cuadrillas activas en esta zona
-              {reporte.zonaId ? '' : ' (el reporte todavia no tiene zona asignada)'}.
+              {sinZonaUtilizable ? ' (el reporte quedó fuera de zona)' : ''}.
             </Parrafo>
           ) : (
             <View style={estilos.chips}>
@@ -217,8 +228,9 @@ export function AccionesOperador({
         deshabilitado={!idDuplicado.trim()}
       />
       <Parrafo suave>
-        Pendiente de definir con el cliente (P-07): que estado queda el duplicado, y si sus
-        adhesiones pasan al reporte original.
+        Este reporte queda rechazado y deja de listarse aparte en el mapa público; el
+        original suma esta adhesión y el vecino que hizo este reclamo recibe un aviso con
+        un enlace al original (resuelto en el foro, P-07).
       </Parrafo>
 
       <CapturaFoto

@@ -112,7 +112,10 @@ export async function leerCercanos(
     const filas = await db.getAllAsync<{ datos: string }>(sql, parametros);
     return filas
       .map((f) => JSON.parse(f.datos) as Reporte)
-      .filter((r) => distanciaEnMetros(punto, r.coordenadas) <= radioM);
+      .filter((r) => distanciaEnMetros(punto, r.coordenadas) <= radioM)
+      // Misma regla que reportesCercanos (src/utils/geo.ts), respuesta del profe a P-03:
+      // un reporte resuelto o rechazado no es un duplicado vigente.
+      .filter((r) => r.estado !== 'resuelto' && r.estado !== 'rechazado');
   } catch (e) {
     throw comoErrorServicio(e, CODIGOS.ERROR_BASE_DATOS, 'No se pudo buscar reportes cercanos.');
   }

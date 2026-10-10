@@ -17,7 +17,9 @@ import { listarReportes } from '@/servicios/reportes';
 import { colores, espacio, radios, tipografia } from '@/tema';
 import {
   ESTADOS_REPORTE,
+  ETIQUETA_FUERA_DE_ZONA,
   ETIQUETAS_ESTADO,
+  ID_FUERA_DE_ZONA,
   type Cuadrilla,
   type EstadoReporte,
   type Reporte,
@@ -100,7 +102,10 @@ export default function Bandeja() {
   }, [reportes, filtroEstado, filtroTipo, filtroZona, orden]);
 
   const nombreTipo = (id: string) => tipos.find((t) => t.id === id)?.nombre ?? id;
-  const nombreZona = (id: string) => zonas.find((z) => z.id === id)?.nombre ?? 'sin zona';
+  const nombreZona = (id: string) =>
+    id === ID_FUERA_DE_ZONA
+      ? ETIQUETA_FUERA_DE_ZONA
+      : zonas.find((z) => z.id === id)?.nombre ?? 'sin zona';
   const nombreCuadrilla = (id: string | null) =>
     id ? (cuadrillas.find((c) => c.id === id)?.nombre ?? id) : null;
 
@@ -148,6 +153,13 @@ export default function Bandeja() {
             alTocar={() => setFiltroZona(filtroZona === zona.id ? null : zona.id)}
           />
         ))}
+        {/* S-14: no es una Zona de la lista, pero el operador necesita poder encontrar
+            rapido los reportes que quedaron sin ninguna. */}
+        <Chip
+          texto={ETIQUETA_FUERA_DE_ZONA}
+          activo={filtroZona === ID_FUERA_DE_ZONA}
+          alTocar={() => setFiltroZona(filtroZona === ID_FUERA_DE_ZONA ? null : ID_FUERA_DE_ZONA)}
+        />
       </View>
 
       <View style={estilos.chips}>
@@ -199,6 +211,9 @@ export default function Bandeja() {
                 <Parrafo suave>Asignado a {nombreCuadrilla(reporte.cuadrillaId)}</Parrafo>
               )}
               {!!reporte.duplicadoDe && (
+                // Mismo destino que tocar la tarjeta (el detalle de este reporte ya tiene
+                // su propio enlace al original en el bloque de rechazo), asi que no hace
+                // falta un touchable anidado adentro de la tarjeta: alcanza con el texto.
                 <Parrafo suave>Duplicado de {reporte.duplicadoDe}</Parrafo>
               )}
             </Tarjeta>
