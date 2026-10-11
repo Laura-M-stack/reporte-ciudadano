@@ -10,7 +10,7 @@ La app está **completa**: los diez requisitos mínimos de la cátedra están im
 (ver la tabla al final).
 
 Estado de la verificación: `npm run verificar` pasa entero — typecheck sin errores, lint sin
-advertencias y **101 de 101 tests**. Lo que todavía NO se probó es la app corriendo en un
+advertencias y **108 de 108 tests**. Lo que todavía NO se probó es la app corriendo en un
 teléfono: ahí pueden aparecer errores de ejecución que ni el typecheck ni los tests ven,
 sobre todo en `expo-audio` y en la API nueva de `expo-file-system`. Presupuesten una sesión
 para el primer `npx expo start`.
@@ -61,8 +61,8 @@ El orden importa: va de lo que más chance tiene de fallar a lo que menos.
    "pendiente de envío", sin código de seguimiento. Al volver la señal se sube solo.
 4. **Duplicados**: crear un reporte del mismo tipo a menos de 50 m de uno existente. Tiene que
    ofrecer sumarse en vez de crear otro.
-5. **Mapa.** Si sale en blanco con el logo de Google en una esquina, no bajaron los
-   mosaicos: ver "Problemas comunes".
+5. **Mapa.** Usa MapLibre con mosaicos de OpenStreetMap (sin clave, sin tarjeta). Si sale en
+   blanco, revisar la conexión a internet del teléfono/emulador: ver "Problemas comunes".
 
 > **Ninguna del equipo vive en Gualeguaychú**, y la asignación de zona y la detección de
 > duplicados a 50 m solo funcionan dentro del ejido. Por eso la pantalla de nuevo reporte
@@ -117,7 +117,7 @@ Dos salvedades del alineamiento actual:
 
 | Dónde | Qué | Quién |
 | --- | --- | --- |
-| — | Ya no hace falta clave de mapas: usamos OpenStreetMap. Si algún día se vuelve a Google Maps, la clave va en el plugin `react-native-maps` de `app.json`, en `androidGoogleMapsApiKey`. | — |
+| — | Ya no hace falta clave de mapas: el mapa es MapLibre con mosaicos de OpenStreetMap (ver "Mapas con MapLibre", más abajo, y S-15). No hay `app.config.js` ni secreto de EAS que configurar para esto. | — |
 | `app.json` → `extra.eas.projectId` | Lo completa `eas build:configure`. | B |
 | `.env` → `EXPO_PUBLIC_API_URL` | Cuando la cátedra publique la API. | quien la reciba |
 
@@ -202,6 +202,7 @@ Qué **no** se commitea (ya está en `.gitignore`): `node_modules/`, `.env`, `an
 | Día 1 | Base compartida: tipos del PRD, mocks, capa de servicios, cola offline, lógica pura con tests, esqueleto de pantallas | Que varias personas puedan trabajar en paralelo sin pisarse |
 | Día 1 | App completa: los diez requisitos implementados | Sacarse la entrega de encima y dejar tiempo para entender el código antes de la defensa |
 | Día 1 | Subida de SDK 54 a 57 | Expo Go solo soporta el SDK más nuevo; con el 54 no se podía probar en el teléfono sin armar un APK cada vez |
+| Después de las respuestas del foro | Se saca `react-native-maps` y se pasa a `@maplibre/maplibre-react-native` (S-15) | Google exige asociar una tarjeta real para habilitar "Maps SDK for Android", aunque no cobre nada; el equipo decidió no usar una tarjeta propia para un trabajo práctico |
 
 ---
 
@@ -317,39 +318,56 @@ eso todos los servicios devuelven `Promise` y las pantallas ya manejan los tres 
 (`EstadoCarga`, `EstadoVacio`, `EstadoError` en `src/ui`), que es lo que la cátedra verifica
 sobre la app entregada.
 
-### 6. Mapas con Google, y la clave fuera del repositorio
+### 6. Mapas con MapLibre, sin clave ni tarjeta
 
-El requisito 5 de la cátedra pide `react-native-maps`, así que no hay alternativa en el
-renderizador. Y en Android `react-native-maps` dibuja con el SDK de Google **aunque se usen
-mosaicos de otro proveedor**: probamos OpenStreetMap con `provider={null}` y `mapType="none"`,
-y el mapa siguió en blanco, porque sin clave válida el SDK no inicializa y no dibuja nada,
-ni siquiera las capas que van encima. Conclusión: la clave de Google es obligatoria.
+Habíamos empezado con `react-native-maps` porque el requisito 5 lo nombra literalmente. El
+problema no fue técnico: en Android, `react-native-maps` dibuja con el SDK de Google **aunque
+se usen mosaicos de otro proveedor** (probamos OpenStreetMap con `provider={null}` y
+`mapType="none"`, y el mapa siguió en blanco), así que la clave de Google era obligatoria.
+Y para habilitar esa API, Google exige asociar una **tarjeta real** a la cuenta de Google
+Cloud, aunque el SKU de apps nativas ("Maps SDK") no cobre nada mientras no se pase de cuota.
+Ninguna del equipo quiso poner una tarjeta propia para un trabajo práctico. Decisión del
+equipo: **se saca `react-native-maps` y se pasa a `@maplibre/maplibre-react-native`**, que es
+el motor GL nativo de MapLibre (continuación open source de Mapbox GL Native) y no pide
+clave para nada.
 
-**La clave no se escribe en `app.json`.** Este repositorio es público: una clave commiteada
-la puede levantar cualquiera y usarla contra la cuenta de Google Cloud de quien la creó. Por
-eso existe `app.config.js`, que la lee de la variable de entorno
-`GOOGLE_MAPS_API_KEY_ANDROID` y la inyecta en el plugin de `react-native-maps` al compilar.
-Si la variable no está, la app igual arranca; solo que el mapa se ve en blanco y la consola
-lo avisa.
+**Qué cambia en el código:**
 
-Las tres protecciones, en orden de importancia:
+- `app.config.js` desaparece: ya no hay ningún secreto que inyectar en un plugin al compilar.
+- El plugin de Expo pasa a ser `@maplibre/maplibre-react-native`, declarado directo en
+  `app.json` (no necesita variables de entorno).
+- El estilo del mapa es un objeto JSON propio (`src/mapas/estiloMapa.ts`): una sola fuente
+  `raster` apuntando a los mosaicos de OpenStreetMap. No hay "provider" como en
+  react-native-maps; el estilo **es** el mapa.
+- MapLibre usa tuplas `[longitud, latitud]` (tipo `LngLat`), al revés que `Coordenadas`
+  (`{ latitud, longitud }`) de este proyecto y que react-native-maps
+  (`{ latitude, longitude }`). La conversión queda aislada en los dos componentes que tocan
+  el mapa: `SelectorUbicacion.tsx` y `app/(vecino)/mapa.tsx`.
+- La sonda de diagnóstico temporal ("montando/listo/dibujado") se sacó: existía solo para
+  distinguir un SDK de Google que no arranca de uno que arranca sin clave válida, y ninguno
+  de los dos problemas existe ya.
+- **El pin de `SelectorUbicacion.tsx` ya no se arrastra.** `@maplibre/maplibre-react-native`
+  11.x (la versión que instala `npx expo install`) no tiene un marcador arrastrable: su
+  `Marker` no tiene props `draggable`/`onDragEnd` (se confirmó leyendo el código fuente de la
+  librería, no la documentación). La corrección del punto queda solo por "tocar el mapa", que
+  ya cubre lo que pide el PRD para cuando se niega el permiso de ubicación. Se podría agregar
+  arrastre más adelante con `PanResponder` + `mapRef.unproject`, pero no vale la complejidad
+  para esta entrega.
 
-1. **No commitearla.** Va en `.env` (que está en `.gitignore`) y, para los builds, como
-   secreto de EAS:
-   `eas secret:create --scope project --name GOOGLE_MAPS_API_KEY_ANDROID --value <la-clave>`
-2. **Restringirla** en Google Cloud a aplicaciones Android, con el paquete
-   `ar.gob.gualeguaychu.reporteciudadano` y la huella SHA-1 del keystore (`eas credentials`).
-   Así, una clave filtrada no le sirve a nadie.
-3. **Tope de cuota y alerta de presupuesto** en Google Cloud, como última red.
+**Lo que sí hay que vigilar (documentado como SUPUESTO S-15):** los mosaicos salen de
+`tile.openstreetmap.org`, el servidor público de OpenStreetMap, que tiene una política de uso
+que desaconseja el consumo "en bruto" desde una app sin cache propia
+(https://operations.osmfoundation.org/policies/tiles/). Para esta entrega el volumen es bajo
+y se acepta el riesgo; si esto fuera a producción real habría que poner un proxy con cache
+propio o pasar a un proveedor con capa gratuita pensada para esto (MapTiler, Stadia Maps:
+piden clave, pero no tarjeta, y tienen más cuota gratuita que lo que necesita esta app).
 
-Sobre el costo: el SKU **"Maps SDK"**, que es el de las apps nativas, figura en la lista de
-precios de Google como *Unlimited*, sin cargo. El que tiene tope de 10.000 por mes es
-*Dynamic Maps*, el mapa de JavaScript para web, que esta app no usa. Google igual exige
-asociar una forma de pago para habilitar la API.
+**MapLibre tampoco corre en Expo Go** (requiere módulo nativo, igual que pasaba con
+react-native-maps): el mapa recién se ve en una development build o en el APK. Lo mismo vale
+para las notificaciones: **una sola build desbloquea los requisitos 5 y 6**.
 
-**La clave no tiene efecto en Expo Go**, que usa su propio manifiesto y no el de la app. El
-mapa recién se ve en una development build o en el APK. Lo mismo vale para las
-notificaciones: **una sola build desbloquea los requisitos 5 y 6**.
+El requisito 5 nombra `react-native-maps` literalmente, y este cambio lo saca del proyecto;
+ya se consultó con el profe y la respuesta fue que vale igual (ver P-16).
 
 ### 7. Diseño pensado para el público del PRD
 
@@ -391,7 +409,7 @@ npm test
 npm test -- --coverage
 ```
 
-Lo que está cubierto hoy (101 casos):
+Lo que está cubierto hoy (108 casos):
 
 - **`src/utils/__tests__/geo.test.ts`** — Haversine y point-in-polygon con sus casos límite:
   distancia 0, distancia conocida de 1 grado de latitud, el umbral exacto de 50 m, cruce del
@@ -431,6 +449,7 @@ Están marcados en el código como `SUPUESTO S-xx`. Si el cliente contesta disti
 | S-12 | La biometría es un **atajo opcional**, no el camino principal: la contraseña siempre está a la vista. Nadie queda trabado por no tener sensor. | `src/servicios/biometria.ts` |
 | S-13 | **P-04 resuelto en el foro**: se agregó la entidad `Adhesion { id, reporteId, usuarioId, fechaHora }`. `Reporte.adhesiones` sigue como contador (para ordenar la bandeja), pero ahora `adherirseAReporte` también crea una `Adhesion` y rechaza que el mismo vecino se sume dos veces. Los mocks de adhesiones arrancan vacíos: los contadores viejos (rep-00412: 3, etc.) no tienen autor conocido y no se inventó uno para no mentir en los datos de prueba. | `src/tipos/adhesion.ts`, `src/mocks/adhesiones.ts`, `src/servicios/reportes.ts` |
 | S-14 | **P-06 resuelto en el foro**: si el punto no cae dentro de ninguna zona, se busca la zona más cercana por el borde del polígono; si está a menos de **120 m** se asigna igual, y si no, el reporte guarda `zonaId: "fuera-de-zona"` (`ID_FUERA_DE_ZONA`). El profe no dio un número exacto para "cerca", así que 120 m es nuestra elección documentada (más que el radio de duplicados de 50 m, por el margen de error de GPS parado en la vereda; bastante menos que el ancho de una franja de zona para no cruzar nunca a la siguiente). | `src/utils/geo.ts`, `src/tipos/zona.ts`, `src/servicios/reportes.ts` |
+| S-15 | Decisión del equipo: se cambia `react-native-maps` por `@maplibre/maplibre-react-native` para no depender de una clave de Google (que exige tarjeta). Los mosaicos salen del servidor público de OpenStreetMap (`tile.openstreetmap.org`), que pide no consumirse "en bruto" sin cache propia; para esta entrega se acepta el riesgo. Ver "Mapas con MapLibre" y P-16. | `src/mapas/estiloMapa.ts`, `src/componentes/SelectorUbicacion.tsx`, `app/(vecino)/mapa.tsx`, `app.json` |
 
 ---
 
@@ -457,6 +476,7 @@ contestó todas; quedan documentadas con su respuesta y el código que las imple
 | P-13 | **¿Duración máxima de la nota de voz, peso máximo de foto, se comprime? ¿La API acepta multipart?** | Con señal intermitente, subir 8 MB por reporte no termina nunca. |
 | P-14 | La cátedra pide biometría para el reingreso general; el PRD solo la menciona para el operador, y el público son mayores de 60 con teléfonos viejos. **¿Confirmamos que la contraseña es el camino principal?** | Hoy asumimos S-12. |
 | P-15 | *"Un rechazado tiene que decir por qué"*, pero `CambioDeEstado.comentario` es `string \| null`. **¿Lo valida la API o solo la app?** | Hoy lo valida la app (`servicios/reportes.cambiarEstado`). Si la API no lo hace, entra basura por otro lado. |
+| **P-16** | ✅ El requisito 5 nombra `react-native-maps` literalmente. **¿Cuenta como cumplido igual si se usa MapLibre en vez de Google Maps, para no depender de una tarjeta real?** | **Resuelto**: el profe confirmó que vale. Se saca `react-native-maps` del proyecto y se pasa a `@maplibre/maplibre-react-native` (S-15). |
 
 ---
 
@@ -468,7 +488,7 @@ contestó todas; quedan documentadas con su respuesta y el código que las imple
 | 2 | Autenticación, sesión persistente, `expo-secure-store`, biometría con alternativa | `src/contexto/ContextoSesion.tsx`, `src/servicios/auth.ts`, `src/servicios/biometria.ts`, `app/(auth)/desbloquear.tsx` |
 | 3 | Consumo de API detrás de capa de servicios, con carga/vacío/error | `src/servicios/http.ts` (único `fetch`), `src/servicios/*.ts`; los tres estados en `src/ui` y usados en todas las listas |
 | 4 | Cámara / galería + `expo-file-system` (File, Directory, Paths) | `src/componentes/CapturaFoto.tsx`, `src/servicios/adjuntos.ts`, `src/datos/archivos.ts` |
-| 5 | `expo-location` + `react-native-maps`, usable sin permiso | `src/servicios/ubicacion.ts`, `src/componentes/SelectorUbicacion.tsx`, `app/(vecino)/mapa.tsx`. Si niega el permiso, el mapa abre en Gualeguaychú y el punto se marca tocando |
+| 5 | `expo-location` + mapa nativo (`@maplibre/maplibre-react-native`, ver P-16), usable sin permiso | `src/servicios/ubicacion.ts`, `src/componentes/SelectorUbicacion.tsx`, `app/(vecino)/mapa.tsx`, `src/mapas/estiloMapa.ts`. Si niega el permiso, el mapa abre en Gualeguaychú y el punto se marca tocando |
 | 6 | Notificaciones locales por un hecho real | `src/servicios/notificaciones.ts` + `src/servicios/sincronizacion.ts`: avisa cuando la sincronización detecta un cambio de estado o una adhesión nueva, y cuando la cola logra subir un reporte. Nunca por un botón de prueba |
 | 7 | `expo-sqlite` + kv-store + `expo-network`, abre sin conexión | `src/datos/db.ts` (migraciones), `colaRepositorio.ts`, `reportesCache.ts`, `preferencias.ts`, `src/servicios/red.ts` |
 | 8 | Sensores o háptica justificada | `src/servicios/haptica.ts`: confirmación de envío (el vecino mira el pozo, no la pantalla), advertencia al detectar un duplicado cerca, obturador de la cámara |
@@ -483,21 +503,22 @@ contestó todas; quedan documentadas con su respuesta y el código que las imple
   `npx expo install --fix`.
 - **Los tests tiran `Unexpected token 'export'`** → el `transformIgnorePatterns` de
   `jest.config.js` quedó mal cerrado. El paréntesis del grupo negado cierra al final.
-- **El mapa sale en blanco** → falta la clave de Google Maps, o estás en Expo Go. En **Expo
-  Go el mapa no se ve y no hay forma de arreglarlo desde el código**: Expo Go usa su propio
-  manifiesto, así que la clave de la app no se aplica. Hay que hacer una development build o
-  el APK. Si ya estás en una build propia y sigue en blanco: revisar que
-  `GOOGLE_MAPS_API_KEY_ANDROID` esté definida (la consola lo avisa al arrancar), que la clave
-  tenga habilitado "Maps SDK for Android" y que sus restricciones incluyan el paquete
-  `ar.gob.gualeguaychu.reporteciudadano` y el SHA-1 de **esa** build (el de desarrollo y el de
-  release son distintos).
+- **El mapa sale en blanco (gris, sin mosaicos)** → no es un problema de clave (MapLibre no
+  pide ninguna): revisar conexión a internet del teléfono/emulador, y que no estés en Expo
+  Go. **MapLibre no corre en Expo Go** (necesita módulo nativo), igual que pasaba con
+  react-native-maps: hay que hacer una development build o el APK.
+- **Error nativo al compilar sobre `@maplibre/maplibre-react-native`** → antes de abrir un
+  issue, confirmar que `npx expo install @maplibre/maplibre-react-native` corrió bien y que
+  el plugin `@maplibre/maplibre-react-native` está en `app.json` → `plugins` (lo agrega el
+  propio comando de instalación si falta). El código de `SelectorUbicacion.tsx` y
+  `app/(vecino)/mapa.tsx` usa el API de la versión 11.x (`Map`, `Camera`, `Marker`,
+  `UserLocation`), leído directo de `node_modules/@maplibre/maplibre-react-native/src`
+  (la documentación pública describe una versión más vieja de la librería, con nombres
+  distintos como `MapView`/`PointAnnotation`). Si `npx expo install` trae una mayor distinta
+  a 11.x, el API puede haber cambiado otra vez: comparar contra ese mismo
+  `node_modules/.../src/components/` antes de tocar nada a mano.
 - **Probar el mapa y las notificaciones** → ninguno de los dos funciona en Expo Go. Una
   development build resuelve los dos: `eas build --profile development --platform android`.
-- **`SelectorUbicacion.tsx` muestra un cartel con "montando/listo/dibujado" y las
-  coordenadas** → es un probe de diagnóstico **temporal** (`onMapReady`/`onMapLoaded`, solo
-  bajo `__DEV__`) que se agregó para confirmar que el mapa en blanco era la clave de Google
-  Maps y no un bug de versión. Hay que sacarlo una vez que el build final renderice el mapa
-  bien; está marcado como temporal en el propio comentario del archivo.
 - **`Cannot find module 'expo-sqlite'` en un test** → un test está tocando la capa de datos.
   Los tests de cola usan `crearRepositorioEnMemoria()`, no SQLite.
 - **ESLint se queja al importar algo de `src/mocks` o `src/datos` en una pantalla** → no es un

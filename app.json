@@ -45,6 +45,7 @@
       "expo-router",
       "expo-secure-store",
       "expo-sqlite",
+      "@maplibre/maplibre-react-native",
       [
         "expo-splash-screen",
         {

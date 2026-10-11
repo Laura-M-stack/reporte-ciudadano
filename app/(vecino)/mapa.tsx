@@ -7,12 +7,21 @@
  * Privacidad: en el mapa se ve el reporte, nunca quien lo hizo. Esta pantalla no muestra
  * autorId ni nombres, y tampoco los pide. Si la API los manda igual, el dato viaja al
  * telefono sin que lo usemos: por eso esta la pregunta P-10 al cliente.
+ *
+ * MIGRADO A MAPLIBRE (ver README y SelectorUbicacion.tsx): sin clave de Google, mosaicos de
+ * OpenStreetMap (S-15). API leida directo de node_modules/@maplibre/maplibre-react-native/src
+ * (11.x): el componente de marcador es `Marker` (no `PointAnnotation`), su evento de toque
+ * trae `{ id, lngLat }` (no un Feature de GeoJSON envuelto), y `UserLocation` no tiene prop
+ * `visible` — se oculta sola mientras no hay posicion, por eso se renderiza solo cuando ya
+ * se sabe `yo` (evita pedir el permiso de ubicacion una segunda vez, con un mecanismo propio
+ * de la libreria, además de `expo-location` que ya usa esta pantalla).
  */
+import { Camera, Map, Marker, UserLocation } from '@maplibre/maplibre-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
+import { ESTILO_OSM_RASTER } from '@/mapas/estiloMapa';
 import { listarTiposDeReporte } from '@/servicios/catalogos';
 import { listarReportes } from '@/servicios/reportes';
 import { CENTRO_GUALEGUAYCHU, ubicacionActual } from '@/servicios/ubicacion';
@@ -28,7 +37,9 @@ import {
 import { EstadoCarga, EstadoError, EstadoVacio, Parrafo } from '@/ui';
 
 /** Zoom inicial: la ciudad entera entra a esta escala. */
-const DELTA_CIUDAD = 0.06;
+const ZOOM_CIUDAD = 13;
+/** Zoom cuando se conoce la ubicacion real del vecino. */
+const ZOOM_CERCA = 15;
 
 export default function Mapa() {
   const router = useRouter();
@@ -94,34 +105,32 @@ export default function Mapa() {
 
   return (
     <View style={estilos.pantalla}>
-      <MapView
-        provider={PROVIDER_GOOGLE}
-        style={estilos.mapa}
-        showsUserLocation={!!yo}
-        initialRegion={{
-          latitude: centro.latitud,
-          longitude: centro.longitud,
-          latitudeDelta: yo ? 0.02 : DELTA_CIUDAD,
-          longitudeDelta: yo ? 0.02 : DELTA_CIUDAD,
-        }}
-      >
+      <Map style={estilos.mapa} mapStyle={ESTILO_OSM_RASTER}>
+        <Camera
+          initialViewState={{
+            center: [centro.longitud, centro.latitud],
+            zoom: yo ? ZOOM_CERCA : ZOOM_CIUDAD,
+          }}
+        />
+
+        {!!yo && <UserLocation />}
+
         {visibles.map((reporte) => (
           <Marker
             key={reporte.id}
-            coordinate={{
-              latitude: reporte.coordenadas.latitud,
-              longitude: reporte.coordenadas.longitud,
-            }}
-            // Un color por estado, el mismo que usan la lista y el detalle (src/tema).
-            pinColor={coloresEstado[reporte.estado].punto}
-            title={reporte.direccion}
-            description={ETIQUETAS_ESTADO[reporte.estado]}
-            onCalloutPress={() =>
+            id={reporte.id}
+            lngLat={[reporte.coordenadas.longitud, reporte.coordenadas.latitud]}
+            onPress={() =>
               router.push({ pathname: '/reporte/[id]', params: { id: reporte.id } })
             }
-          />
+          >
+            {/* Un color por estado, el mismo que usan la lista y el detalle (src/tema). */}
+            <View
+              style={[estilos.pin, { backgroundColor: coloresEstado[reporte.estado].punto }]}
+            />
+          </Marker>
         ))}
-      </MapView>
+      </Map>
 
       <View style={estilos.panel}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.chips}>
@@ -157,8 +166,8 @@ export default function Mapa() {
           />
         ) : (
           <Parrafo suave>
-            {visibles.length} reporte{visibles.length === 1 ? '' : 's'} en el mapa. Tocá un punto y
-            despues el cartel para ver el detalle.
+            {visibles.length} reporte{visibles.length === 1 ? '' : 's'} en el mapa. Tocá un punto
+            para ver el detalle.
           </Parrafo>
         )}
       </View>
@@ -194,6 +203,13 @@ const estilos = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: colores.fondo },
   mapa: { flex: 1 },
   relleno: { padding: espacio.md },
+  pin: {
+    width: 22,
+    height: 22,
+    borderRadius: radios.completo,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
   panel: {
     padding: espacio.sm,
     gap: espacio.sm,
