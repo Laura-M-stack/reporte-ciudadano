@@ -34,9 +34,21 @@ import { ESTILO_OSM_RASTER } from '../mapas/estiloMapa';
 import { CENTRO_GUALEGUAYCHU } from '../servicios/ubicacion';
 import { colores, radios } from '../tema';
 import type { Coordenadas } from '../tipos';
+import { distanciaEnMetros } from '../utils/geo';
 
 /** Zoom de media cuadra, que es la precision que necesita una cuadrilla para encontrar el pozo. */
 const ZOOM = 17;
+
+/**
+ * A partir de que distancia entre el punto anterior y el nuevo la camara recentra sola.
+ *
+ * Tiene que ser mayor que una correccion fina tocando el mapa (metros, decenas de metros)
+ * para no "pelearle" al vecino la camara mientras ajusta el punto, pero menor que un salto
+ * entre zonas de la ciudad (los atajos de __DEV__ de PUNTOS_DE_PRUEBA, a varios cientos de
+ * metros o kilometros entre si) para que esos saltos sí se vean. 300 m deja un margen comodo
+ * entre ambos casos.
+ */
+const UMBRAL_RECENTRADO_M = 300;
 
 export function SelectorUbicacion({
   punto,
@@ -49,16 +61,21 @@ export function SelectorUbicacion({
 }) {
   const centro = punto ?? CENTRO_GUALEGUAYCHU;
   const camara = useRef<CameraRef>(null);
-  const yaCentrado = useRef(false);
+  const anterior = useRef<Coordenadas | null>(null);
 
   /**
    * El mapa arranca centrado en Gualeguaychu (al montar todavia no llego la ubicacion real
-   * del GPS). La primera vez que llega un punto real, movemos la camara a mano; despues el
-   * vecino toca el mapa para corregir y no queremos que se recentre solo.
+   * del GPS). Recentra la camara en dos casos: cuando llega el primer punto (GPS o el centro
+   * de la ciudad si no hay permiso), y cuando el punto salta lejos del anterior — los atajos
+   * de zona de __DEV__, que mueven el punto a otra punta de la ciudad sin que el vecino haya
+   * tocado el mapa ahi. Una correccion fina (tocar el mapa a unos metros de donde estaba)
+   * NO recentra: el vecino ya esta viendo esa zona y recentrar le "pelearia" la camara.
    */
   useEffect(() => {
-    if (!punto || yaCentrado.current) return;
-    yaCentrado.current = true;
+    if (!punto) return;
+    const esSalto = !anterior.current || distanciaEnMetros(anterior.current, punto) > UMBRAL_RECENTRADO_M;
+    anterior.current = punto;
+    if (!esSalto) return;
     camara.current?.flyTo({
       center: [punto.longitud, punto.latitud],
       zoom: ZOOM,
