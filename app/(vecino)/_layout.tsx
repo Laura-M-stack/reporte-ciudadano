@@ -7,12 +7,15 @@
  */
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { Redirect, Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSesion } from '@/contexto/ContextoSesion';
 import { TAMANO_TACTIL_MINIMO, colores, tipografia } from '@/tema';
 
 export default function LayoutVecino() {
   const { estado, usuario } = useSesion();
+  // Hook llamado siempre, antes de cualquier return condicional de abajo (regla de los hooks).
+  const insetes = useSafeAreaInsets();
 
   if (estado === 'cargando') return null;
   if (estado === 'bloqueada') return <Redirect href="/(auth)/desbloquear" />;
@@ -26,7 +29,15 @@ export default function LayoutVecino() {
         tabBarActiveTintColor: colores.primario,
         tabBarInactiveTintColor: colores.textoSuave,
         tabBarLabelStyle: { fontSize: tipografia.chico.fontSize, fontWeight: '600' },
-        tabBarStyle: { height: TAMANO_TACTIL_MINIMO + 24, paddingBottom: 8, paddingTop: 8 },
+        // La barra de tabs tiene que despejar la barra de navegacion del sistema (los gestos/
+        // flechitas de Android, que en algunos equipos nunca se ocultan). insetes.bottom es la
+        // altura de esa zona; se suma al alto y al padding fijos en vez de usar numeros fijos
+        // solos, que es lo que hacia que el menu quedara tapado.
+        tabBarStyle: {
+          height: TAMANO_TACTIL_MINIMO + 24 + insetes.bottom,
+          paddingBottom: 8 + insetes.bottom,
+          paddingTop: 8,
+        },
       }}
     >
       <Tabs.Screen
