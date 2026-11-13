@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "start": "expo start",
+    "eas-build-pre-install": "npm install -g npm@11.17.0",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "lint": "eslint .",

@@ -12,7 +12,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api-reporte-ciudadano-8f4l.onrender.com"
-      }
+      },
+      "node": "24.19.0"
     },
     "preview": {
       "distribution": "internal",
@@ -22,7 +23,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api-reporte-ciudadano-8f4l.onrender.com"
-      }
+      },
+      "node": "24.19.0"
     },
     "production": {
       "autoIncrement": true,
@@ -32,7 +34,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api-reporte-ciudadano-8f4l.onrender.com"
-      }
+      },
+      "node": "24.19.0"
     }
   },
   "submit": {
