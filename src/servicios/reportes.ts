@@ -47,16 +47,30 @@ export interface FiltrosReporte extends ParametrosPaginacion {
   autorId?: string;
 }
 
+/**
+ * Parametros para GET /reportes (el mapa publico). `autorId` NO viaja: la API no lo acepta
+ * (rechaza con 400 cualquier parametro que no conoce) y los reportes propios se piden a
+ * GET /yo/reportes. Se usa solo para filtrar en el mock y en la copia local.
+ */
 function aParametros(filtros: FiltrosReporte = {}): Record<string, string | number | undefined> {
   return {
     estado: filtros.estado,
     tipoId: filtros.tipoId,
     zonaId: filtros.zonaId,
-    autorId: filtros.autorId,
     pagina: filtros.pagina,
     porPagina: filtros.porPagina,
   };
 }
+
+/** Todos los estados, separados por coma: sin `estado`, GET /reportes no trae los rechazados. */
+const TODOS_LOS_ESTADOS = 'recibido,en_revision,asignado,resuelto,rechazado';
+
+/** Maximos de pagina que acepta la API (si se pide mas, responde 400). */
+const POR_PAGINA_MAPA = 500;
+const POR_PAGINA_LISTA = 100;
+
+/** Radio maximo de GET /reportes/cercanos. */
+const RADIO_MAXIMO_CERCANOS_M = 200;
 
 function filtrarEnMemoria(reportes: Reporte[], filtros: FiltrosReporte = {}): Reporte[] {
   return reportes.filter((r) => {
@@ -87,7 +101,10 @@ export async function listarReportes(filtros: FiltrosReporte = {}): Promise<Pagi
 
   try {
     const { datos, meta } = await pedirCompleto<Reporte[]>('/reportes', {
-      parametros: aParametros(filtros),
+      parametros: {
+        ...aParametros(filtros),
+        porPagina: Math.min(filtros.porPagina ?? 20, POR_PAGINA_MAPA),
+      },
     });
     // Guardar en cache es parte del contrato: la proxima vez la app abre sin conexion.
     await guardarReportes(datos).catch(() => undefined);
@@ -102,12 +119,63 @@ export async function listarReportes(filtros: FiltrosReporte = {}): Promise<Pagi
   }
 }
 
-/** Los reportes del vecino que entro. */
-export function listarMisReportes(
+/**
+ * Los reportes del vecino que entro. Con API va a GET /yo/reportes: el servidor sabe quien
+ * es por el token, y trae todos sus reportes en cualquier estado (el mapa publico no).
+ */
+export async function listarMisReportes(
   autorId: string,
   filtros: FiltrosReporte = {},
 ): Promise<Pagina<Reporte>> {
-  return listarReportes({ ...filtros, autorId });
+  if (!hayApi()) return listarReportes({ ...filtros, autorId });
+
+  try {
+    const { datos, meta } = await pedirCompleto<Reporte[]>('/yo/reportes', {
+      parametros: {
+        pagina: filtros.pagina,
+        porPagina: Math.min(filtros.porPagina ?? POR_PAGINA_LISTA, POR_PAGINA_LISTA),
+      },
+    });
+    await guardarReportes(datos).catch(() => undefined);
+    return aPagina(datos, meta);
+  } catch (e) {
+    const error = comoErrorServicio(e);
+    if (error.codigo === CODIGOS.SIN_CONEXION || error.codigo === CODIGOS.TIEMPO_AGOTADO) {
+      const cacheados = await leerReportes({ autorId });
+      if (cacheados.length > 0) return aPagina(ordenarNuevosPrimero(cacheados), undefined);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Todos los reportes de la ciudad para la bandeja del operador, en los cinco estados.
+ *
+ * Por que GET /reportes y no GET /bandeja: /bandeja trae solo los abiertos (y de a 100), y el
+ * operador tambien necesita ver los resueltos (para subir la foto del arreglo) y los
+ * rechazados (para auditar un duplicado). Los filtros y el orden por adhesiones los hace la
+ * pantalla, igual que con el mock.
+ */
+export function listarBandeja(): Promise<Pagina<Reporte>> {
+  if (!hayApi()) return listarReportes({ porPagina: 200 });
+  return listarReportesConEstados(TODOS_LOS_ESTADOS);
+}
+
+async function listarReportesConEstados(estados: string): Promise<Pagina<Reporte>> {
+  try {
+    const { datos, meta } = await pedirCompleto<Reporte[]>('/reportes', {
+      parametros: { estado: estados, porPagina: POR_PAGINA_MAPA },
+    });
+    await guardarReportes(datos).catch(() => undefined);
+    return aPagina(datos, meta);
+  } catch (e) {
+    const error = comoErrorServicio(e);
+    if (error.codigo === CODIGOS.SIN_CONEXION || error.codigo === CODIGOS.TIEMPO_AGOTADO) {
+      const cacheados = await leerReportes({});
+      if (cacheados.length > 0) return aPagina(ordenarNuevosPrimero(cacheados), undefined);
+    }
+    throw error;
+  }
 }
 
 export async function obtenerReporte(id: string): Promise<Reporte> {
@@ -137,6 +205,25 @@ export async function obtenerReporte(id: string): Promise<Reporte> {
   }
 }
 
+/**
+ * Un reporte por su numero de seguimiento (GCHU-2026-00412). Es lo que trae el QR segun el
+ * README de la API, y lo que el vecino puede dictar en la ventanilla.
+ */
+export async function obtenerReportePorCodigo(codigo: string): Promise<Reporte> {
+  const normalizado = codigo.trim().toUpperCase();
+  if (!hayApi()) {
+    await demorar(DEMORA_MOCK_MS);
+    const reporte = REPORTES.find((r) => r.codigo.toUpperCase() === normalizado);
+    if (!reporte) {
+      throw new ErrorServicio(CODIGOS.NO_ENCONTRADO, 'No encontramos ese reporte.');
+    }
+    return reporte;
+  }
+  const reporte = await pedir<Reporte>(`/reportes/codigo/${encodeURIComponent(normalizado)}`);
+  await guardarReportes([reporte]).catch(() => undefined);
+  return reporte;
+}
+
 /** Historial de cambios de estado ("Que fue pasando" en el mockup del PRD). */
 export async function historialDeReporte(reporteId: string): Promise<CambioDeEstado[]> {
   if (!hayApi()) {
@@ -148,7 +235,11 @@ export async function historialDeReporte(reporteId: string): Promise<CambioDeEst
   }
 
   try {
-    const cambios = await pedir<CambioDeEstado[]>(`/reportes/${reporteId}/cambios`);
+    // De a 100 (el maximo): con el default de 20, un reporte con muchas idas y vueltas
+    // mostraria el historial cortado.
+    const cambios = await pedir<CambioDeEstado[]>(`/reportes/${reporteId}/cambios`, {
+      parametros: { porPagina: POR_PAGINA_LISTA },
+    });
     await guardarCambios(cambios).catch(() => undefined);
     return cambios;
   } catch (e) {
@@ -171,6 +262,8 @@ export async function historialDeReporte(reporteId: string): Promise<CambioDeEst
 export async function crearReporte(
   borrador: BorradorReporte,
   idLocal: string,
+  /** Cuando lo hizo el vecino (la API lo pide asi). Puede ser horas antes de subirse. */
+  creadoEn: string = ahoraIso(),
 ): Promise<Reporte> {
   if (!borrador.adjuntos.some((a) => a.tipo === 'foto')) {
     throw new ErrorServicio(
@@ -193,28 +286,71 @@ export async function crearReporte(
     return reporte;
   }
 
-  const formulario = new FormData();
-  formulario.append('tipoId', borrador.tipoId);
-  formulario.append('descripcion', borrador.descripcion ?? '');
-  formulario.append('latitud', String(borrador.coordenadas.latitud));
-  formulario.append('longitud', String(borrador.coordenadas.longitud));
-  formulario.append('direccion', borrador.direccion);
-  if (borrador.zonaId) formulario.append('zonaId', borrador.zonaId);
-  if (borrador.adhiereAReporteId) formulario.append('adhiereA', borrador.adhiereAReporteId);
-  formulario.append('idLocal', idLocal);
+  // 1. Subir cada archivo que aun no tenga URL remota a POST /archivos. La API pide primero
+  //    el archivo y despues el reporte con esa URL. Si un reintento de la cola vuelve a subir
+  //    una foto que ya habia subido, queda un archivo sin usar en el servidor: no rompe nada.
+  const fotos: { id?: string; url: string }[] = [];
+  let audioUrl: string | null = null;
 
   for (const adjunto of borrador.adjuntos) {
-    formulario.append(adjunto.tipo === 'audio' ? 'audio' : 'fotos', {
-      // React Native acepta este objeto como parte de un FormData multipart.
-      uri: adjunto.uri,
-      name: adjunto.uri.split('/').pop() ?? `${adjunto.id}.bin`,
-      type: adjunto.tipo === 'audio' ? 'audio/m4a' : 'image/jpeg',
-    } as unknown as Blob);
+    let url = adjunto.urlRemota;
+    if (!url) {
+      try {
+        const form = new FormData();
+        form.append('archivo', {
+          uri: adjunto.uri,
+          name: adjunto.uri.split('/').pop() ?? `${adjunto.id}.${adjunto.tipo === 'audio' ? 'm4a' : 'jpg'}`,
+          type: adjunto.tipo === 'audio' ? 'audio/m4a' : 'image/jpeg',
+        } as unknown as Blob);
+
+        const subido = await pedir<{ url: string }>('/archivos', {
+          metodo: 'POST',
+          formulario: form,
+        });
+        url = subido.url;
+        adjunto.urlRemota = url;
+      } catch (e) {
+        throw comoErrorServicio(e, CODIGOS.ERROR_ARCHIVO, 'No se pudo subir la foto o el audio.');
+      }
+    }
+
+    if (adjunto.tipo === 'audio') {
+      audioUrl = url;
+    } else {
+      fotos.push({
+        id: adjunto.id.startsWith('fot-') ? adjunto.id : undefined,
+        url,
+      });
+    }
+  }
+
+  // 2. Enviar el reporte a POST /reportes
+  const idCandidato = idLocal.startsWith('rep-')
+    ? idLocal
+    : idLocal.startsWith('local-')
+      ? `rep-${idLocal.slice(6)}`
+      : undefined;
+
+  const cuerpo: Record<string, unknown> = {
+    tipoId: borrador.tipoId,
+    descripcion: borrador.descripcion || null,
+    audioUrl,
+    fotos,
+    coordenadas: borrador.coordenadas,
+    direccion: borrador.direccion,
+    creadoEn,
+  };
+
+  // El id propio es lo que hace idempotente el envio: si la red se corta despues de que el
+  // servidor guardo, el reintento con el mismo id devuelve el mismo reporte (200) en vez de
+  // crear otro. La API no usa la cabecera Idempotency-Key; la mandamos igual (no molesta).
+  if (idCandidato && /^rep-[A-Za-z0-9_-]{3,36}$/.test(idCandidato)) {
+    cuerpo.id = idCandidato;
   }
 
   return pedir<Reporte>('/reportes', {
     metodo: 'POST',
-    formulario,
+    cuerpo,
     claveIdempotencia: idLocal,
   });
 }
@@ -276,7 +412,8 @@ export async function reportesCercaDe(
       parametros: {
         latitud: punto.latitud,
         longitud: punto.longitud,
-        radio: radioM,
+        // El parametro se llama radioMetros: con otro nombre la API responde 400.
+        radioMetros: Math.min(radioM, RADIO_MAXIMO_CERCANOS_M),
         tipoId,
       },
     });
@@ -329,11 +466,12 @@ export async function yaAdherido(reporteId: string, usuarioId: string): Promise<
     await demorar(DEMORA_MOCK_MS);
     return ADHESIONES.some((a) => a.reporteId === reporteId && a.usuarioId === usuarioId);
   }
-  // Pendiente de confirmar con la API real: lo ideal es que /reportes/:id ya traiga este
-  // dato (ej. "yaAdherido": true) en vez de necesitar una consulta aparte por cada reporte.
+  // La API no trae "yaAdherido" en el reporte: se mira en GET /yo/adhesiones. Si falla, se
+  // asume que no: el peor caso es que el boton "sumarme" quede habilitado, y la API responde
+  // 200 sin duplicar si el vecino ya estaba sumado.
   try {
-    const reporte = await pedir<Reporte & { yaAdherido?: boolean }>(`/reportes/${reporteId}`);
-    return reporte.yaAdherido ?? false;
+    const sumados = await misAdhesiones(usuarioId);
+    return sumados.some((r) => r.id === reporteId);
   } catch {
     return false;
   }
@@ -349,9 +487,11 @@ export async function misAdhesiones(usuarioId: string): Promise<Reporte[]> {
     return ordenarNuevosPrimero(REPORTES.filter((r) => idsSumados.has(r.id)));
   }
   try {
-    const { datos } = await pedirCompleto<Reporte[]>('/reportes', {
-      parametros: { adheridoPor: usuarioId },
+    // Endpoint agregado por el grupo a la API (issue "Agregar GET /yo/adhesiones").
+    const { datos } = await pedirCompleto<Reporte[]>('/yo/adhesiones', {
+      parametros: { porPagina: POR_PAGINA_LISTA },
     });
+    await guardarReportes(datos).catch(() => undefined);
     return datos;
   } catch (e) {
     const error = comoErrorServicio(e);
@@ -377,7 +517,7 @@ export interface CambioSolicitado {
 export async function cambiarEstado(
   reporteId: string,
   cambio: CambioSolicitado,
-): Promise<CambioDeEstado> {
+): Promise<Reporte> {
   const comentario = cambio.comentario?.trim() || null;
   if (cambio.estado === 'rechazado' && !comentario) {
     throw new ErrorServicio(
@@ -395,20 +535,37 @@ export async function cambiarEstado(
   if (!hayApi()) {
     await demorar(DEMORA_MOCK_MS);
     fallasSimuladas.verificar();
-    return {
+    const reporte = REPORTES.find((r) => r.id === reporteId);
+    if (!reporte) throw new ErrorServicio(CODIGOS.NO_ENCONTRADO, 'No encontramos ese reporte.');
+    // El mock se comporta como el servidor: lo que cambia, queda (y queda en el historial).
+    reporte.estado = cambio.estado;
+    if (cambio.estado === 'asignado') reporte.cuadrillaId = cambio.cuadrillaId ?? null;
+    const usuario = await preferencias.leerUsuario();
+    CAMBIOS_DE_ESTADO.push({
       id: `cam-${nuevoUuid().slice(0, 6)}`,
       reporteId,
       estado: cambio.estado,
       comentario,
-      operadorId: 'usr-003',
+      operadorId: usuario?.id ?? null,
       fechaHora: ahoraIso(),
-    };
+    });
+    return reporte;
   }
 
-  return pedir<CambioDeEstado>(`/reportes/${reporteId}/cambios`, {
-    metodo: 'POST',
-    cuerpo: { estado: cambio.estado, comentario, cuadrillaId: cambio.cuadrillaId ?? null },
-  });
+  // La API separa los dos caminos: "asignado" solo se alcanza eligiendo una cuadrilla. En los
+  // dos devuelve el Reporte actualizado; el CambioDeEstado queda en GET /reportes/:id/cambios.
+  const actualizado =
+    cambio.estado === 'asignado' && cambio.cuadrillaId
+      ? await pedir<Reporte>(`/reportes/${reporteId}/cuadrilla`, {
+          metodo: 'PATCH',
+          cuerpo: { cuadrillaId: cambio.cuadrillaId, comentario },
+        })
+      : await pedir<Reporte>(`/reportes/${reporteId}/estado`, {
+          metodo: 'PATCH',
+          cuerpo: { estado: cambio.estado, comentario },
+        });
+  await guardarReportes([actualizado]).catch(() => undefined);
+  return actualizado;
 }
 
 /**
@@ -431,15 +588,50 @@ export async function subirFotoDeArreglo(reporteId: string, uriLocal: string): P
     };
   }
 
+  // 1. Subir a /archivos
   const formulario = new FormData();
-  formulario.append('momento', 'arreglo');
-  formulario.append('foto', {
+  formulario.append('archivo', {
     uri: uriLocal,
     name: uriLocal.split('/').pop() ?? 'arreglo.jpg',
     type: 'image/jpeg',
   } as unknown as Blob);
 
-  return pedir<Reporte>(`/reportes/${reporteId}/fotos`, { metodo: 'POST', formulario });
+  const subido = await pedir<{ url: string }>('/archivos', {
+    metodo: 'POST',
+    formulario,
+  });
+
+  // 2. Asociar al reporte
+  return pedir<Reporte>(`/reportes/${reporteId}/fotos`, {
+    metodo: 'POST',
+    cuerpo: { url: subido.url },
+  });
+}
+
+/**
+ * Corrige la zona de un reporte (solo operador). Endpoint agregado por el grupo a la API
+ * (PATCH /reportes/:id/zona): si la cuadrilla asignada es de otra zona, el servidor la suelta
+ * y deja un cambio de estado que lo explica.
+ */
+export async function corregirZona(
+  reporteId: string,
+  zonaId: string,
+  comentario: string | null = null,
+): Promise<Reporte> {
+  if (!hayApi()) {
+    await demorar(DEMORA_MOCK_MS);
+    fallasSimuladas.verificar();
+    const reporte = REPORTES.find((r) => r.id === reporteId);
+    if (!reporte) throw new ErrorServicio(CODIGOS.NO_ENCONTRADO, 'No encontramos ese reporte.');
+    reporte.zonaId = zonaId;
+    return reporte;
+  }
+  const reporte = await pedir<Reporte>(`/reportes/${reporteId}/zona`, {
+    metodo: 'PATCH',
+    cuerpo: { zonaId, comentario: comentario?.trim() || null },
+  });
+  await guardarReportes([reporte]).catch(() => undefined);
+  return reporte;
 }
 
 /**
@@ -500,7 +692,7 @@ export async function marcarDuplicado(
     return reporte;
   }
   return pedir<Reporte>(`/reportes/${reporteId}/duplicado`, {
-    metodo: 'PATCH',
-    cuerpo: { duplicadoDe },
+    metodo: 'POST',
+    cuerpo: { originalId: duplicadoDe },
   });
 }

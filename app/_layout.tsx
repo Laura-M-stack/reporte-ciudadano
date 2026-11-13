@@ -8,7 +8,7 @@
  * Las decisiones de a donde mandar a cada usuario NO estan aca: estan en app/index.tsx
  * y en el _layout de cada grupo.
  */
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -17,9 +17,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ProveedorSesion, useSesion } from '@/contexto/ContextoSesion';
 import { iniciarAutoSincronizacion } from '@/servicios/cola';
 import {
+  alTocarNotificacion,
   configurar as configurarNotificaciones,
   notificarReporteEnviado,
   pedirPermiso as pedirPermisoNotificaciones,
+  registrarDispositivo,
 } from '@/servicios/notificaciones';
 import { colores } from '@/tema';
 
@@ -52,6 +54,7 @@ export default function LayoutRaiz() {
 /** Efectos de arranque. Va separado porque necesita estar dentro del proveedor. */
 function Arranque() {
   const { estado } = useSesion();
+  const router = useRouter();
 
   useEffect(() => {
     if (estado === 'cargando') return;
@@ -64,18 +67,35 @@ function Arranque() {
       await configurarNotificaciones().catch(() => undefined);
       // El permiso se pide recien cuando hay sesion, no al abrir la app por primera vez:
       // un permiso pedido antes de que el vecino entienda para que sirve se deniega solo.
-      await pedirPermisoNotificaciones().catch(() => undefined);
+      const conPermiso = await pedirPermisoNotificaciones().catch(() => false);
+      // Push: con permiso, este telefono se registra en la API para recibir los avisos de
+      // cambios de estado y adhesiones aunque la app este cerrada (ver notificaciones.ts).
+      if (conPermiso) await registrarDispositivo();
     })();
+
+    // Tocar una notificacion (push o local) abre el reporte del que habla.
+    let dejarDeEscuchar: () => void = () => undefined;
+    let desmontado = false;
+    void alTocarNotificacion((reporteId) => {
+      router.push({ pathname: '/reporte/[id]', params: { id: reporteId } });
+    }).then((dejar) => {
+      if (desmontado) dejar();
+      else dejarDeEscuchar = dejar;
+    });
 
     // Requisito 6 de la catedra: la notificacion la dispara un hecho real de la app.
     // Aca el hecho es "la cola consiguio subir un reporte que estaba esperando señal".
     const frenar = iniciarAutoSincronizacion((resultado) => {
       if (resultado.enviados > 0) {
-        void notificarReporteEnviado(`${resultado.enviados} reporte(s)`);
+        void notificarReporteEnviado(resultado.enviados);
       }
     });
-    return frenar;
-  }, [estado]);
+    return () => {
+      desmontado = true;
+      dejarDeEscuchar();
+      frenar();
+    };
+  }, [estado, router]);
 
   return null;
 }

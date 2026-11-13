@@ -1,7 +1,7 @@
 /**
  * Ingreso. Persona 1.
  *
- * Funciona contra el mock: cualquiera de los dos emails de prueba + una clave de 6 o mas
+ * Funciona contra el mock: cualquiera de los dos emails de prueba + una clave de 8 o mas
  * caracteres. Sirve como ejemplo del patron que usan todas las pantallas:
  * estado local -> servicio -> ErrorServicio -> mensajeParaUsuario.
  */
@@ -54,7 +54,7 @@ export default function Ingresar() {
         onChangeText={setClave}
         secureTextEntry
         autoComplete="current-password"
-        placeholder="Al menos 6 caracteres"
+        placeholder="Al menos 8 caracteres"
       />
 
       <Boton titulo="Ingresar" alTocar={alIngresar} cargando={enviando} />

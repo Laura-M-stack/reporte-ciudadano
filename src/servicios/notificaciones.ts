@@ -1,16 +1,18 @@
 /**
- * Notificaciones locales (expo-notifications).
+ * Notificaciones: push (desde la API) y locales (desde la app). expo-notifications.
  *
- * SUPUESTO S-10, y hay que conversarlo con el cliente (P-05): la catedra pide notificaciones
- * LOCALES disparadas por un hecho real de la app, pero el hecho que le importa al vecino
- * —"el operador cambio el estado de mi reclamo"— ocurre en el servidor. Sin push, la app
- * solo puede enterarse cuando sincroniza. Entonces:
+ * PUSH (resuelve P-05): la API de la catedra ya decide cuando avisar (cambio de estado de un
+ * reporte, otro vecino que se suma) y el grupo completo la parte que faltaba (guardar los
+ * tokens y mandarlos a Expo). La app, al entrar, pide el token de Expo del telefono y lo
+ * registra con POST /dispositivos; al cerrar sesion lo da de baja. Asi el aviso llega aunque
+ * la app este cerrada.
  *
- *   - Al sincronizar, comparamos el estado que teniamos en cache con el que trae la API.
- *     Si cambio, disparamos la notificacion local. Es un hecho real, no un boton de prueba.
- *   - Tambien notificamos cuando la cola logra subir un reporte que estaba esperando senal.
- *
- * Lo que NO hace: avisar con la app cerrada. Eso necesita push y esta fuera de alcance.
+ * LOCALES (requisito 6 de la catedra, disparadas por un hecho real):
+ *   - La cola logra subir un reporte que estaba esperando señal. Ese hecho ocurre en el
+ *     telefono, asi que siempre es local.
+ *   - Al sincronizar, si el estado de un reporte cambio respecto de la copia local. Es la
+ *     red de seguridad cuando NO hay push (sin API, sin permiso, o sin token): si el
+ *     telefono si tiene push registrado, no se repite el aviso que ya mando el servidor.
  *
  * POR QUE EL MODULO SE CARGA EN DIFERIDO (y no con un `import` arriba):
  * en Expo Go sobre Android, expo-notifications LANZA UN ERROR al cargarse. No es una
@@ -32,6 +34,8 @@ import { Platform } from 'react-native';
 
 import { preferencias } from '../datos/preferencias';
 import { ETIQUETAS_ESTADO, type EstadoReporte, type Reporte } from '../tipos';
+
+import { hayApi, pedir } from './http';
 
 export const CANAL_ANDROID = 'reportes';
 
@@ -119,6 +123,96 @@ export async function pedirPermiso(): Promise<boolean> {
   }
 }
 
+/** El projectId de EAS: getExpoPushTokenAsync lo necesita fuera de Expo Go. */
+function idDeProyecto(): string | null {
+  const extra = Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined;
+  return extra?.eas?.projectId ?? Constants.easConfig?.projectId ?? null;
+}
+
+/**
+ * Registra este telefono en la API para recibir push. Se llama con la sesion ya activa y el
+ * permiso ya pedido. Devuelve true si quedo registrado. Nunca lanza.
+ *
+ * Por que puede no registrarse, y en todos los casos la app sigue con las locales:
+ *  - sin API (modo mock) o sin permiso de notificaciones;
+ *  - en Expo Go sobre Android (el modulo no carga);
+ *  - en Android, si la build no tiene la configuracion de Firebase (google-services.json):
+ *    Expo usa FCM para entregar las push y getExpoPushTokenAsync falla sin ella.
+ */
+export async function registrarDispositivo(): Promise<boolean> {
+  if (!hayApi()) return false;
+  const N = await cargar();
+  const proyecto = idDeProyecto();
+  if (!N || !proyecto) return false;
+  try {
+    const permiso = await N.getPermissionsAsync();
+    if (!permiso.granted) {
+      await preferencias.borrarTokenPush();
+      return false;
+    }
+    const { data: tokenExpo } = await N.getExpoPushTokenAsync({ projectId: proyecto });
+    await pedir('/dispositivos', {
+      metodo: 'POST',
+      cuerpo: { tokenExpo, plataforma: Platform.OS === 'ios' ? 'ios' : 'android' },
+    });
+    await preferencias.guardarTokenPush(tokenExpo);
+    return true;
+  } catch {
+    // Sin token registrado, la sincronizacion vuelve a avisar con notificaciones locales.
+    await preferencias.borrarTokenPush().catch(() => undefined);
+    return false;
+  }
+}
+
+/** Da de baja el token de este telefono (al cerrar sesion). Si no habia, no hace nada. */
+export async function darDeBajaDispositivo(): Promise<void> {
+  const token = await preferencias.leerTokenPush();
+  if (!token) return;
+  try {
+    if (hayApi()) {
+      await pedir<void>(`/dispositivos/${encodeURIComponent(token)}`, { metodo: 'DELETE' });
+    }
+  } finally {
+    await preferencias.borrarTokenPush();
+  }
+}
+
+/** true si las novedades del servidor ya llegan por push a este telefono. */
+async function hayPushRegistrado(): Promise<boolean> {
+  return (await preferencias.leerTokenPush()) !== null;
+}
+
+/**
+ * Al tocar una notificacion (push o local) que trae `reporteId`, abre ese reporte. Cubre
+ * tambien el caso de la app cerrada: la notificacion que la abrio se lee al arrancar.
+ * Devuelve la funcion para dejar de escuchar.
+ */
+export async function alTocarNotificacion(
+  abrirReporte: (reporteId: string) => void,
+): Promise<() => void> {
+  const N = await cargar();
+  if (!N) return () => undefined;
+  const manejar = (datos: unknown) => {
+    const id = (datos as { reporteId?: unknown } | null)?.reporteId;
+    if (typeof id === 'string' && id) abrirReporte(id);
+  };
+  try {
+    // La que abrio la app (si la abrio una notificacion). Se limpia despues de usarla: si no,
+    // cada vez que se vuelve a abrir la app saltaria otra vez al mismo reporte.
+    const inicial = N.getLastNotificationResponse();
+    if (inicial) {
+      manejar(inicial.notification.request.content.data);
+      N.clearLastNotificationResponse();
+    }
+    const suscripcion = N.addNotificationResponseReceivedListener((respuesta) =>
+      manejar(respuesta.notification.request.content.data),
+    );
+    return () => suscripcion.remove();
+  } catch {
+    return () => undefined;
+  }
+}
+
 async function avisar(
   titulo: string,
   cuerpo: string,
@@ -171,11 +265,13 @@ export function notificarDuplicado(reporte: Reporte): Promise<void> {
   );
 }
 
-/** La cola logro subir un reporte que estaba esperando senal. */
-export function notificarReporteEnviado(codigo: string): Promise<void> {
+/** La cola logro subir reportes que estaban esperando señal. */
+export function notificarReporteEnviado(cantidad: number): Promise<void> {
   return avisar(
-    'Tu reporte ya se envío',
-    `Quedó registrado como ${codigo}. Ya lo pueden ver en la Municipalidad.`,
+    cantidad === 1 ? 'Tu reporte ya se envió' : 'Tus reportes ya se enviaron',
+    cantidad === 1
+      ? 'Quedó registrado y ya lo pueden ver en la Municipalidad. El número de seguimiento está en Mis reclamos.'
+      : `${cantidad} reportes quedaron registrados y ya los pueden ver en la Municipalidad.`,
     { tipo: 'reporte_enviado' },
   );
 }
@@ -188,6 +284,10 @@ export async function avisarCambiosDetectados(
   anteriores: Reporte[],
   actuales: Reporte[],
 ): Promise<number> {
+  // Si el telefono recibe push, el servidor ya aviso de estos cambios: repetirlos con una
+  // local seria mandar dos notificaciones por el mismo hecho.
+  if (await hayPushRegistrado()) return 0;
+
   const porId = new Map(anteriores.map((r) => [r.id, r]));
   let avisos = 0;
   for (const actual of actuales) {

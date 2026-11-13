@@ -14,6 +14,7 @@ const CLAVES = {
   ultimaSincronizacion: 'ultima_sincronizacion',
   borradorEnCurso: 'borrador_en_curso',
   tutorialVisto: 'tutorial_visto',
+  tokenPush: 'token_push',
 } as const;
 
 async function leerJson<T>(clave: string): Promise<T | null> {
@@ -76,9 +77,24 @@ export const preferencias = {
     await Storage.removeItem(CLAVES.borradorEnCurso);
   },
 
+  /**
+   * Token de Expo que este telefono registro en la API (POST /dispositivos). Si esta, las
+   * novedades llegan por push y las notificaciones locales de sincronizacion no se repiten.
+   */
+  leerTokenPush(): Promise<string | null> {
+    return Storage.getItem(CLAVES.tokenPush);
+  },
+  async guardarTokenPush(token: string): Promise<void> {
+    await Storage.setItem(CLAVES.tokenPush, token);
+  },
+  async borrarTokenPush(): Promise<void> {
+    await Storage.removeItem(CLAVES.tokenPush);
+  },
+
   /** Al cerrar sesion. No toca la cola de reportes sin subir. */
   async limpiarSesion(): Promise<void> {
     await Storage.removeItem(CLAVES.usuario);
     await Storage.removeItem(CLAVES.biometriaHabilitada);
+    await Storage.removeItem(CLAVES.tokenPush);
   },
 };

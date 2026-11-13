@@ -12,9 +12,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CapturaFoto } from './CapturaFoto';
 import { mensajeParaUsuario } from '../errores';
-import { listarCuadrillas } from '../servicios/catalogos';
+import { listarCuadrillas, listarZonas } from '../servicios/catalogos';
 import * as haptica from '../servicios/haptica';
-import { cambiarEstado, marcarDuplicado, subirFotoDeArreglo } from '../servicios/reportes';
+import {
+  cambiarEstado,
+  corregirZona,
+  marcarDuplicado,
+  subirFotoDeArreglo,
+} from '../servicios/reportes';
 import { colores, espacio, radios, tipografia } from '../tema';
 import {
   ESTADOS_REPORTE,
@@ -23,6 +28,7 @@ import {
   type Cuadrilla,
   type EstadoReporte,
   type Reporte,
+  type Zona,
 } from '../tipos';
 import { Aviso, Boton, Campo, Parrafo, Subtitulo } from '../ui';
 
@@ -43,6 +49,11 @@ export function AccionesOperador({
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [zonas, setZonas] = useState<Zona[]>([]);
+  // null = el operador no eligio otra; se muestra la del reporte. Derivado en vez de copiar
+  // la prop al estado, asi no queda desfasado cuando el detalle recarga.
+  const [zonaElegida, setZonaElegida] = useState<string | null>(null);
+  const zonaNueva = zonaElegida ?? reporte.zonaId;
 
   // S-14: zonaId ahora siempre trae algo (una zona real o ID_FUERA_DE_ZONA), asi que para
   // "sin zona utilizable" hay que comparar contra el sentinel, no contra string vacio.
@@ -54,9 +65,22 @@ export function AccionesOperador({
     // ID_FUERA_DE_ZONA: no matchea ninguna cuadrilla real, asi que el filtro normal ya da
     // una lista vacia (y el setState queda dentro del .then, no sincronico en el efecto).
     void listarCuadrillas(reporte.zonaId)
-      .then((lista) => setCuadrillas(lista.filter((c) => c.activa)))
+      .then((lista) => {
+        const activas = lista.filter((c) => c.activa);
+        setCuadrillas(activas);
+        // Si la cuadrilla elegida ya no es de esta zona (por ejemplo, despues de corregir la
+        // zona), se deselecciona: si no, el boton quedaria habilitado con una cuadrilla que
+        // la API rechaza por ser de otra zona.
+        setCuadrillaId((elegida) => (activas.some((c) => c.id === elegida) ? elegida : null));
+      })
       .catch(() => setCuadrillas([]));
   }, [reporte.zonaId]);
+
+  useEffect(() => {
+    void listarZonas()
+      .then(setZonas)
+      .catch(() => setZonas([]));
+  }, []);
 
   async function guardarCambio() {
     setError(null);
@@ -115,6 +139,30 @@ export function AccionesOperador({
     }
   }
 
+  async function guardarZona() {
+    setError(null);
+    setAviso(null);
+    setGuardando(true);
+    try {
+      const actualizado = await corregirZona(reporte.id, zonaNueva);
+      void haptica.confirmarEnvio();
+      setZonaElegida(null);
+      setAviso(
+        reporte.cuadrillaId && !actualizado.cuadrillaId
+          ? 'Zona corregida. La cuadrilla era de otra zona: se soltó y el reporte volvió a revisión.'
+          : 'Zona corregida.',
+      );
+      alCambiar();
+    } catch (e) {
+      void haptica.errorAlEnviar();
+      setError(mensajeParaUsuario(e));
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  const reporteAbierto =
+    reporte.estado === 'recibido' || reporte.estado === 'en_revision' || reporte.estado === 'asignado';
   const rechazoSinMotivo = estado === 'rechazado' && !comentario.trim();
   const asignadoSinCuadrilla = estado === 'asignado' && !cuadrillaId;
 
@@ -204,6 +252,39 @@ export function AccionesOperador({
             titulo="Sacar foto del arreglo"
             variante="secundario"
             alTocar={() => setCamaraAbierta(true)}
+          />
+        </>
+      )}
+
+      {reporteAbierto && zonas.length > 0 && (
+        <>
+          <View style={estilos.separador} />
+          <Parrafo>Corregir la zona</Parrafo>
+          <Parrafo suave>
+            La zona se calcula sola con el punto del mapa. Si el punto quedó cerca del borde y cayó
+            en la que no corresponde, corregila acá.
+          </Parrafo>
+          <View style={estilos.chips}>
+            {zonas.map((zona) => (
+              <Pressable
+                key={zona.id}
+                onPress={() => setZonaElegida(zona.id)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: zonaNueva === zona.id }}
+                style={[estilos.chip, zonaNueva === zona.id && estilos.chipActivo]}
+              >
+                <Text style={[estilos.chipTexto, zonaNueva === zona.id && estilos.chipTextoActivo]}>
+                  {zona.nombre}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Boton
+            titulo="Guardar zona"
+            variante="secundario"
+            alTocar={() => void guardarZona()}
+            cargando={guardando}
+            deshabilitado={zonaNueva === reporte.zonaId}
           />
         </>
       )}

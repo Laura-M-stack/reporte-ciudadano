@@ -20,7 +20,15 @@ export function hayApi(): boolean {
   return URL_API.length > 0;
 }
 
-const TIEMPO_LIMITE_MS = 15_000;
+/**
+ * 45 s y no 15: la API publicada en Render (plan gratis) se duerme a los 15 minutos sin uso y
+ * tarda cerca de un minuto en despertar. Con 15 s el primer pedido del dia fallaba siempre
+ * por tiempo agotado. La pantalla igual muestra que esta cargando mientras espera.
+ */
+const TIEMPO_LIMITE_MS = 45_000;
+
+/** 5xx (o un proxy que devuelve HTML mientras el servidor arranca): vale la pena reintentar. */
+const esFallaDelServidor = (estado: number) => estado >= 500;
 
 /** El token lo inyecta el servicio de auth al iniciar sesion; http no conoce SecureStore. */
 let obtenerToken: () => string | null = () => null;
@@ -110,6 +118,9 @@ export async function pedirCompleto<T>(
   }
   clearTimeout(temporizador);
 
+  // 204 (DELETE /dispositivos/:token): exito sin cuerpo. No hay "datos" que desempaquetar.
+  if (respuesta.status === 204) return { datos: undefined as T };
+
   let cuerpo: RespuestaApi<T> | null = null;
   const texto = await respuesta.text();
   if (texto) {
@@ -117,15 +128,36 @@ export async function pedirCompleto<T>(
       cuerpo = JSON.parse(texto) as RespuestaApi<T>;
     } catch (e) {
       throw new ErrorServicio(
-        CODIGOS.RESPUESTA_INVALIDA,
+        esFallaDelServidor(respuesta.status) ? CODIGOS.ERROR_SERVIDOR : CODIGOS.RESPUESTA_INVALIDA,
         'El servidor devolvio algo que no es JSON.',
-        { causa: e, detalles: { estado: respuesta.status } },
+        {
+          causa: e,
+          detalles: { estado: respuesta.status },
+          reintentable: esFallaDelServidor(respuesta.status),
+        },
       );
     }
   }
 
   if (cuerpo && esRespuestaError(cuerpo)) {
-    throw desdeErrorApi(cuerpo.error, { estado: respuesta.status, ruta });
+    const error = desdeErrorApi(cuerpo.error, { estado: respuesta.status, ruta });
+    // Un 500 con el sobre de error de la API (ERROR_INTERNO, ALMACEN_NO_DISPONIBLE) es una
+    // falla pasajera del servidor, no un dato mal cargado: la cola tiene que reintentarlo en
+    // vez de dejar el reporte en "error" para siempre.
+    if (esFallaDelServidor(respuesta.status)) {
+      throw new ErrorServicio(error.codigo, error.mensaje, {
+        detalles: error.detalles,
+        reintentable: true,
+      });
+    }
+    // 401 de la API: el token vencio o es invalido. Se unifica en SESION_EXPIRADA salvo en el
+    // login, donde el 401 significa "email o contraseña incorrectos".
+    if (respuesta.status === 401 && error.codigo === 'NO_AUTENTICADO') {
+      throw new ErrorServicio(CODIGOS.SESION_EXPIRADA, 'Tu sesión venció.', {
+        detalles: { estado: 401, ruta },
+      });
+    }
+    throw error;
   }
 
   if (!respuesta.ok) {

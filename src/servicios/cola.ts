@@ -252,7 +252,7 @@ export function crearServicioCola(deps: DependenciasCola): ServicioCola {
  */
 export const cola: ServicioCola = crearServicioCola({
   repositorio: repositorioColaSqlite,
-  enviar: async (item) => crearReporte(item.borrador, item.idLocal),
+  enviar: async (item) => crearReporte(item.borrador, item.idLocal, item.creadoEn),
   hayInternet,
   borrarArchivo: borrarAdjunto,
 });

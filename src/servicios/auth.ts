@@ -16,9 +16,10 @@ import type { Credenciales, DatosRegistro, Sesion, Usuario } from '../tipos';
 import { ahoraIso, nuevoUuid } from '../utils';
 
 import { configurarToken, demorar, hayApi, pedir } from './http';
+import { darDeBajaDispositivo } from './notificaciones';
 
 /** Largo minimo de contrasena. Si la API pide otra cosa, gana la API. */
-export const LARGO_MINIMO_CLAVE = 6;
+export const LARGO_MINIMO_CLAVE = 8;
 
 let tokenEnMemoria: string | null = null;
 
@@ -70,9 +71,14 @@ export async function ingresar(credenciales: Credenciales): Promise<Sesion> {
     return persistirSesion({ token: `mock-${nuevoUuid()}`, usuario });
   }
 
-  const sesion = await pedir<Sesion>('/auth/ingresar', {
+  // Contrato de la API de la catedra (README de api-reporte-ciudadano): POST /auth/ingreso
+  // con { email, contrasena } devuelve { token, usuario }.
+  const sesion = await pedir<Sesion>('/auth/ingreso', {
     metodo: 'POST',
-    cuerpo: { email: credenciales.email.trim().toLowerCase(), clave: credenciales.clave },
+    cuerpo: {
+      email: credenciales.email.trim().toLowerCase(),
+      contrasena: credenciales.clave,
+    },
   });
   return persistirSesion(sesion);
 }
@@ -104,8 +110,8 @@ export async function registrar(datos: DatosRegistro): Promise<Sesion> {
     cuerpo: {
       nombre: datos.nombre.trim(),
       email: datos.email.trim().toLowerCase(),
-      clave: datos.clave,
-      telefono: datos.telefono,
+      contrasena: datos.clave,
+      telefono: datos.telefono || null,
     },
   });
   return persistirSesion(sesion);
@@ -133,7 +139,7 @@ export async function sesionGuardada(): Promise<Sesion | null> {
 export async function refrescarUsuario(): Promise<Usuario | null> {
   if (!tokenEnMemoria) return null;
   if (!hayApi()) return preferencias.leerUsuario();
-  const usuario = await pedir<Usuario>('/auth/yo');
+  const usuario = await pedir<Usuario>('/yo');
   await preferencias.guardarUsuario(usuario);
   return usuario;
 }
@@ -146,7 +152,9 @@ export function avisosActivos(): Promise<boolean> {
 export async function actualizarAvisos(activos: boolean): Promise<void> {
   await preferencias.guardarAvisosActivos(activos);
   if (hayApi() && tokenEnMemoria) {
-    await pedir<Usuario>('/auth/yo', { metodo: 'PATCH', cuerpo: { avisosActivos: activos } });
+    // La API usa este interruptor para decidir si manda las push: tiene que quedar guardado
+    // del lado del servidor, no solo en el telefono.
+    await pedir<Usuario>('/yo', { metodo: 'PATCH', cuerpo: { avisosActivos: activos } });
   }
 }
 
@@ -158,6 +166,10 @@ export async function actualizarAvisos(activos: boolean): Promise<void> {
  * antes de cerrar sesion. Borrarlos en silencio seria perder el trabajo del vecino.
  */
 export async function cerrarSesion(): Promise<void> {
+  // Antes de soltar el token: que este telefono deje de recibir las push de esta cuenta.
+  // Si falla (sin señal), no se traba el cierre de sesion; la API igual pasa el token a la
+  // proxima cuenta que lo registre.
+  await darDeBajaDispositivo().catch(() => undefined);
   tokenEnMemoria = null;
   await borrarToken();
   await preferencias.limpiarSesion();

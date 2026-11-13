@@ -53,7 +53,13 @@ export default function Registro() {
         onChangeText={setTelefono}
         keyboardType="phone-pad"
       />
-      <Campo etiqueta="Contraseña" value={clave} onChangeText={setClave} secureTextEntry />
+      <Campo
+        etiqueta="Contraseña"
+        value={clave}
+        onChangeText={setClave}
+        secureTextEntry
+        placeholder="Al menos 8 caracteres"
+      />
 
       <Boton titulo="Crear cuenta" alTocar={alRegistrar} cargando={enviando} />
       <Boton titulo="Ya tengo cuenta" variante="secundario" alTocar={() => router.back()} />

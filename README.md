@@ -38,10 +38,25 @@ npx expo start
 # r  -> recargar
 ```
 
+### Entrar con la API de la cátedra
+
+Con `EXPO_PUBLIC_API_URL` apuntando a la API, se entra con los usuarios de demo que cargan sus
+semillas. Todos tienen la contraseña **`demo1234`**:
+
+| Correo | Rol | Qué tiene |
+| --- | --- | --- |
+| `norma@mail.com` | vecino | La vecina del PRD, con reportes. |
+| `nuevo@demo.ar` | vecino | Cuenta vacía, para ver las listas vacías. |
+| `operador.norte@demo.ar` | operador | Zona norte. |
+| `operador.sur@demo.ar` | operador | Zona sur, con los avisos apagados. |
+
+La API rechaza el punto si cae fuera de Gualeguaychú (`FUERA_DE_LA_CIUDAD`): para probar desde
+otra ciudad, usar los atajos de zona de la pantalla de reporte (más abajo).
+
 ### Entrar a la app sin API
 
 Con `EXPO_PUBLIC_API_URL` vacío, los servicios responden con los mocks de `src/mocks`. Para
-ingresar sirve cualquiera de estos dos correos y **cualquier clave de 6 caracteres o más**
+ingresar sirve cualquiera de estos dos correos y **cualquier clave de 8 caracteres o más**
 (no hay ninguna contraseña escrita en el código: el correo decide el rol):
 
 | Correo | Rol | Qué se ve |
@@ -119,7 +134,9 @@ Dos salvedades del alineamiento actual:
 | --- | --- | --- |
 | — | Ya no hace falta clave de mapas: el mapa es MapLibre con mosaicos de OpenStreetMap (ver "Mapas con MapLibre", más abajo, y S-15). No hay `app.config.js` ni secreto de EAS que configurar para esto. | — |
 | `app.json` → `extra.eas.projectId` | Lo completa `eas build:configure`. | B |
-| `.env` → `EXPO_PUBLIC_API_URL` | Cuando la cátedra publique la API. | quien la reciba |
+| `.env` → `EXPO_PUBLIC_API_URL` | La dirección de la API. Para probar en la compu: la IP que muestra la API al arrancar (mismo wifi). Para el APK: la dirección `https://…onrender.com` de la API publicada. | equipo |
+| `eas.json` → `env.EXPO_PUBLIC_API_URL` de cada perfil | La misma dirección pública. EAS **no** sube el `.env` (está en `.gitignore`), así que el APK la toma de acá. | equipo |
+| `google-services.json` + `app.json` → `android.googleServicesFile` | Para que lleguen las push en Android (S-16). | equipo |
 
 ---
 
@@ -202,6 +219,7 @@ Qué **no** se commitea (ya está en `.gitignore`): `node_modules/`, `.env`, `an
 | Día 1 | Base compartida: tipos del PRD, mocks, capa de servicios, cola offline, lógica pura con tests, esqueleto de pantallas | Que varias personas puedan trabajar en paralelo sin pisarse |
 | Día 1 | App completa: los diez requisitos implementados | Sacarse la entrega de encima y dejar tiempo para entender el código antes de la defensa |
 | Día 1 | Subida de SDK 54 a 57 | Expo Go solo soporta el SDK más nuevo; con el 54 no se podía probar en el teléfono sin armar un APK cada vez |
+| Integración con la API | Se conecta la app a la API de la cátedra, se completa la parte de push que la API deja a los alumnos, y se agregan a la API `GET /yo/adhesiones` y `PATCH /reportes/:id/zona` | Con la API real se ven los parámetros que la app mandaba y la API no acepta (rechaza con 400 lo que no conoce): se alineó cada llamada a su contrato |
 | Después de las respuestas del foro | Se saca `react-native-maps` y se pasa a `@maplibre/maplibre-react-native` (S-15) | Google exige asociar una tarjeta real para habilitar "Maps SDK for Android", aunque no cobre nada; el equipo decidió no usar una tarjeta propia para un trabajo práctico |
 
 ---
@@ -444,12 +462,14 @@ Están marcados en el código como `SUPUESTO S-xx`. Si el cliente contesta disti
 | S-07 | ~~Mientras el reporte está en la cola no se muestra un código inventado.~~ **Superado, P-02 resuelto en el foro**: sí conviene mostrar algo, así que ahora se ve un código *provisorio* (`LOCAL-xxxxxxxx`, derivado del `idLocal`) con la etiqueta "Pendiente de sincronización". El oficial (`GCHU-...`) sigue siendo el que asigna el servidor. | `src/utils/ids.ts`, `app/(vecino)/mis-reportes.tsx`, `app/(vecino)/reportar.tsx` |
 | S-08 | Cerrar sesión **no borra** la cola de reportes sin subir. Son del vecino; la pantalla avisa que quedan en el teléfono. | `src/servicios/auth.ts`, `app/(vecino)/ajustes.tsx` |
 | S-09 | En respuestas de un solo elemento, `datos` es el objeto; en listas, el arreglo. El PRD solo muestra el caso lista. | `src/tipos/api.ts` |
-| S-10 | Las notificaciones locales se disparan al detectar un cambio de estado durante la sincronización en primer plano, y al subirse un reporte que estaba en la cola. Sin push no hay aviso con la app cerrada. Depende de P-05. | `src/servicios/notificaciones.ts` |
+| S-10 | Las novedades del servidor (cambio de estado, adhesión) llegan por **push** cuando el teléfono quedó registrado. Si no hay push (modo mock, sin permiso, Expo Go, o una build sin Firebase), la sincronización en primer plano las avisa con notificaciones **locales**. Si hay push, la local no se repite. Que la cola logre subir un reporte siempre se avisa con una local. | `src/servicios/notificaciones.ts`, `src/servicios/sincronizacion.ts` |
 | S-11 | La detección de duplicados compara contra la copia local cuando no hay red. Sin cache previo, offline no hay detección. El resto de P-03 (mismo tipo, excluir resuelto/rechazado) ya no es un supuesto: es la respuesta del profe en el foro, aplicada en `reportesCercanos` y en `leerCercanos`. | `src/servicios/reportes.ts`, `src/datos/reportesCache.ts` |
 | S-12 | La biometría es un **atajo opcional**, no el camino principal: la contraseña siempre está a la vista. Nadie queda trabado por no tener sensor. | `src/servicios/biometria.ts` |
 | S-13 | **P-04 resuelto en el foro**: se agregó la entidad `Adhesion { id, reporteId, usuarioId, fechaHora }`. `Reporte.adhesiones` sigue como contador (para ordenar la bandeja), pero ahora `adherirseAReporte` también crea una `Adhesion` y rechaza que el mismo vecino se sume dos veces. Los mocks de adhesiones arrancan vacíos: los contadores viejos (rep-00412: 3, etc.) no tienen autor conocido y no se inventó uno para no mentir en los datos de prueba. | `src/tipos/adhesion.ts`, `src/mocks/adhesiones.ts`, `src/servicios/reportes.ts` |
 | S-14 | **P-06 resuelto en el foro**: si el punto no cae dentro de ninguna zona, se busca la zona más cercana por el borde del polígono; si está a menos de **120 m** se asigna igual, y si no, el reporte guarda `zonaId: "fuera-de-zona"` (`ID_FUERA_DE_ZONA`). El profe no dio un número exacto para "cerca", así que 120 m es nuestra elección documentada (más que el radio de duplicados de 50 m, por el margen de error de GPS parado en la vereda; bastante menos que el ancho de una franja de zona para no cruzar nunca a la siguiente). | `src/utils/geo.ts`, `src/tipos/zona.ts`, `src/servicios/reportes.ts` |
 | S-15 | Decisión del equipo: se cambia `react-native-maps` por `@maplibre/maplibre-react-native` para no depender de una clave de Google (que exige tarjeta). Los mosaicos salen del servidor público de OpenStreetMap (`tile.openstreetmap.org`), que pide no consumirse "en bruto" sin cache propia; para esta entrega se acepta el riesgo. Ver "Mapas con MapLibre" y P-16. | `src/mapas/estiloMapa.ts`, `src/componentes/SelectorUbicacion.tsx`, `app/(vecino)/mapa.tsx`, `app.json` |
+| S-16 | Las push en Android necesitan Firebase (Expo las entrega por FCM): un proyecto de Firebase gratis (plan Spark, sin tarjeta), su `google-services.json` en la raíz y la clave de FCM cargada en EAS. Sin eso la app no se rompe: `registrarDispositivo` falla en silencio y quedan las locales (S-10). | `app.json` → `android.googleServicesFile`, `src/servicios/notificaciones.ts` |
+| S-17 | La bandeja del operador pide `GET /reportes` con los cinco estados y no `GET /bandeja`, porque `/bandeja` trae solo los abiertos y el operador también necesita los resueltos (foto del arreglo) y los rechazados (auditar un duplicado). El orden por adhesiones y los filtros los hace la pantalla. | `listarBandeja` en `src/servicios/reportes.ts` |
 
 ---
 
@@ -465,17 +485,17 @@ contestó todas; quedan documentadas con su respuesta y el código que las imple
 | **P-02** | ✅ El código `GCHU-2026-00412` lo asigna el servidor, pero el reporte se crea sin señal. **¿Qué le mostramos mientras está en la cola?** | **Resuelto**: el profe confirmó que sí conviene mostrar algo. Se agregó un código *provisorio* `LOCAL-xxxxxxxx` (derivado del `idLocal`, ver `codigoProvisorio` en `src/utils/ids.ts`) con la etiqueta "Pendiente de sincronización", en `app/(vecino)/mis-reportes.tsx` y en la pantalla de éxito de `app/(vecino)/reportar.tsx`. Ver S-07 (superado). |
 | **P-03** | ✅ Duplicados a 50 m: **¿contra cualquier tipo o solo el mismo? ¿Se excluyen resueltos y rechazados?** | **Resuelto**: solo mismo tipo, y resueltos/rechazados no cuentan. Aplicado en un solo lugar (`reportesCercanos`, `src/utils/geo.ts`, y su espejo offline `leerCercanos` en `src/datos/reportesCache.ts`) para que la detección online y offline no se desalineen. |
 | **P-04** | ✅ **Faltaba la entidad Adhesión.** | **Resuelto**: se agregó `Adhesion { id, reporteId, usuarioId, fechaHora }` (`src/tipos/adhesion.ts`, S-13). `adherirseAReporte` la crea y evita que el mismo vecino se sume dos veces; "A los que me sumé" ya se puede listar en Mis reclamos. |
-| P-05 | La cátedra pide notificaciones **locales**; el hecho que le importa al vecino pasa en el servidor. **Sin push, el aviso llega cuando el vecino abre la app.** ¿Alcanza? | Sigue abierta: es una limitación conocida (S-10), no algo que el foro haya resuelto. |
+| **P-05** | ✅ La cátedra pide notificaciones **locales**; el hecho que le importa al vecino pasa en el servidor. ¿Alcanza con avisar cuando el vecino abre la app? | **Resuelto con push**: la API de la cátedra (lo documenta su README, `api-reporte-ciudadano`) ya decide cuándo y a quién avisar, y dejó para los alumnos guardar los tokens y mandarlos a Expo. Lo completamos en la API (`src/student-notifications/`) y la app registra el teléfono al entrar (`registrarDispositivo` en `src/servicios/notificaciones.ts`). Las locales siguen para lo que pasa en el teléfono (S-10). |
 | **P-06** | ✅ **¿Quién provee los polígonos reales? ¿Qué pasa si el punto cae fuera de todas?** | **Resuelto**: si cae cerca de una zona se asigna igual; si no, queda "fuera de zona". El profe no dio un número exacto para "cerca", así que se documentó la elección (120 m) como S-14. `Reporte.zonaId` sigue siendo `string` no nulo: ahora el valor es `ID_FUERA_DE_ZONA` en vez de una cadena vacía. |
 | **P-07** | ✅ Existe `duplicadoDe` pero **"duplicado" no es un estado.** ¿Qué pasa con A al marcarlo duplicado de B? | **Resuelto**: A pasa a `rechazado` con un comentario que referencia a B, B suma la adhesión de A, el autor de A recibe un aviso (no se suscribe a los cambios futuros de B), y A deja de listarse aparte en el mapa público (sigue accesible desde la bandeja del operador y desde su propio detalle, con un enlace a B). Implementado en `marcarDuplicado` (`src/servicios/reportes.ts`), `notificarDuplicado` (`src/servicios/notificaciones.ts`), `app/(vecino)/mapa.tsx` y `app/reporte/[id].tsx`. |
-| P-08 | **¿La API acepta una clave de idempotencia** (`Idempotency-Key` o el `idLocal` en el cuerpo)? | Sin eso, un corte de red en el momento justo crea el bache catorce veces otra vez, que es el problema que la app vino a resolver. |
-| P-09 | **¿Cómo se crean las cuentas de operador?** ¿El rol viene en la respuesta del login? ¿Un operador ve solo su zona (`Usuario.zonaId`) o todas? | Define el guard de navegación y los filtros de la bandeja. |
-| P-10 | El mapa público no debe mostrar quién reportó, pero `autorId` está en el modelo. **¿La API lo filtra en el endpoint público?** | Si no lo filtra el servidor, el dato sensible viaja igual al teléfono. |
-| P-11 | QR: **¿qué lleva adentro y quién lo escanea?** ¿La chica de la ventanilla usa esta misma app con cuenta de operador? Si el QR lleva el código a secas, cualquiera que le saque una foto abre el reporte. | Define si hay que implementar lectura de QR además de generación. |
-| P-12 | La API página de a 20. **¿Hay endpoint por área (bbox) para el mapa** o hay que paginar toda la ciudad? | Con paginado de 20 el mapa no se puede pintar. |
-| P-13 | **¿Duración máxima de la nota de voz, peso máximo de foto, se comprime? ¿La API acepta multipart?** | Con señal intermitente, subir 8 MB por reporte no termina nunca. |
+| **P-08** | ✅ **¿La API acepta una clave de idempotencia?** | **Resuelto por la API de la cátedra (lo documenta su README, `api-reporte-ciudadano`)**: `POST /reportes` acepta un `id` propio (`rep-…`); repetir el pedido con el mismo id devuelve el mismo reporte con 200 en vez de duplicarlo. La app manda `rep-<uuid del idLocal>` (`crearReporte`, `src/servicios/reportes.ts`). |
+| **P-09** | ✅ **¿Cómo se crean las cuentas de operador? ¿El rol viene en el login? ¿Ve solo su zona?** | **Resuelto por la API de la cátedra (lo documenta su README, `api-reporte-ciudadano`)**: los operadores se cargan con las semillas, el registro público siempre crea vecinos, y `POST /auth/ingreso` devuelve el `usuario` con su `rol` y su `zonaId`. La bandeja de la app muestra todas las zonas con un filtro por zona (S-17). |
+| **P-10** | ✅ **¿La API filtra quién reportó en el endpoint público?** | **Resuelto por la API de la cátedra (lo documenta su README, `api-reporte-ciudadano`)**: el detalle público trae `autorId` pero nunca el nombre, el email ni el teléfono. |
+| **P-11** | ✅ QR: **¿qué lleva adentro y quién lo escanea?** | **Resuelto por la API de la cátedra (lo documenta su README, `api-reporte-ciudadano`)**: el QR lleva el número de seguimiento (`GCHU-2026-00412`) y `GET /reportes/codigo/:codigo` lo resuelve. La operadora lo escanea con esta misma app. El escáner (`app/(operador)/escanear.tsx`) acepta el número de seguimiento y también el enlace con el id que genera la app. |
+| **P-12** | ✅ **¿Hay endpoint por área para el mapa?** | **Resuelto por la API de la cátedra (lo documenta su README, `api-reporte-ciudadano`)**: `GET /reportes` acepta `norte`/`sur`/`este`/`oeste` y `porPagina` hasta 500. Para una ciudad del tamaño de Gualeguaychú alcanza con pedir hasta 500 de una vez. |
+| **P-13** | ✅ **¿Peso máximo de foto y audio? ¿Multipart?** | **Resuelto por la API de la cátedra (lo documenta su README, `api-reporte-ciudadano`)**: primero se sube cada archivo con `POST /archivos` (multipart, campo `archivo`): foto jpeg/png/webp hasta 5 MB, audio m4a/aac/mp3 hasta 10 MB. Después el reporte viaja como JSON con esas URLs. |
 | P-14 | La cátedra pide biometría para el reingreso general; el PRD solo la menciona para el operador, y el público son mayores de 60 con teléfonos viejos. **¿Confirmamos que la contraseña es el camino principal?** | Hoy asumimos S-12. |
-| P-15 | *"Un rechazado tiene que decir por qué"*, pero `CambioDeEstado.comentario` es `string \| null`. **¿Lo valida la API o solo la app?** | Hoy lo valida la app (`servicios/reportes.cambiarEstado`). Si la API no lo hace, entra basura por otro lado. |
+| **P-15** | ✅ **¿El motivo del rechazo lo valida la API o solo la app?** | **Resuelto por la API de la cátedra (lo documenta su README, `api-reporte-ciudadano`)**: la API responde `MOTIVO_REQUERIDO` si falta. La app lo sigue validando antes de mandar, para no hacer esperar al operador. |
 | **P-16** | ✅ El requisito 5 nombra `react-native-maps` literalmente. **¿Cuenta como cumplido igual si se usa MapLibre en vez de Google Maps, para no depender de una tarjeta real?** | **Resuelto**: el profe confirmó que vale. Se saca `react-native-maps` del proyecto y se pasa a `@maplibre/maplibre-react-native` (S-15). |
 
 ---
@@ -489,7 +509,7 @@ contestó todas; quedan documentadas con su respuesta y el código que las imple
 | 3 | Consumo de API detrás de capa de servicios, con carga/vacío/error | `src/servicios/http.ts` (único `fetch`), `src/servicios/*.ts`; los tres estados en `src/ui` y usados en todas las listas |
 | 4 | Cámara / galería + `expo-file-system` (File, Directory, Paths) | `src/componentes/CapturaFoto.tsx`, `src/servicios/adjuntos.ts`, `src/datos/archivos.ts` |
 | 5 | `expo-location` + mapa nativo (`@maplibre/maplibre-react-native`, ver P-16), usable sin permiso | `src/servicios/ubicacion.ts`, `src/componentes/SelectorUbicacion.tsx`, `app/(vecino)/mapa.tsx`, `src/mapas/estiloMapa.ts`. Si niega el permiso, el mapa abre en Gualeguaychú y el punto se marca tocando |
-| 6 | Notificaciones locales por un hecho real | `src/servicios/notificaciones.ts` + `src/servicios/sincronizacion.ts`: avisa cuando la sincronización detecta un cambio de estado o una adhesión nueva, y cuando la cola logra subir un reporte. Nunca por un botón de prueba |
+| 6 | Notificaciones locales por un hecho real (y push) | `src/servicios/notificaciones.ts` + `src/servicios/sincronizacion.ts`: local cuando la cola logra subir un reporte; push desde la API cuando cambia el estado o alguien se suma (con local de respaldo si no hay push). Nunca por un botón de prueba |
 | 7 | `expo-sqlite` + kv-store + `expo-network`, abre sin conexión | `src/datos/db.ts` (migraciones), `colaRepositorio.ts`, `reportesCache.ts`, `preferencias.ts`, `src/servicios/red.ts` |
 | 8 | Sensores o háptica justificada | `src/servicios/haptica.ts`: confirmación de envío (el vecino mira el pozo, no la pantalla), advertencia al detectar un duplicado cerca, obturador de la cámara |
 | 9 | Multimedia (`expo-audio`) con controles a la vista | `src/componentes/Audio.tsx`: grabador con cronómetro y tope, reproductor con play/pausa, barra de avance y tiempos |
@@ -499,6 +519,17 @@ contestó todas; quedan documentadas con su respuesta y el código que las imple
 
 ## Problemas comunes
 
+- **El primer pedido del día tarda casi un minuto o da "La conexión tardó demasiado"** → la API
+  publicada en Render (plan gratis) se duerme a los 15 minutos sin uso y tarda ~1 minuto en
+  despertar. `http.ts` espera hasta 45 s. Antes de grabar o de una demo, abrir
+  `https://<la-api>.onrender.com/salud` en el navegador para despertarla.
+- **Todo da `VALIDACION_FALLIDA` (400)** → la API rechaza cualquier campo o parámetro que no
+  conoce. Si se agrega un filtro, revisar el nombre exacto en `http://<ip>:3000/docs`.
+- **No llegan las push en Android** → falta Firebase (S-16): sin `google-services.json` en la
+  build, `getExpoPushTokenAsync` falla y la app se queda con las notificaciones locales. Agregar
+  el archivo es un cambio nativo: necesita un build nuevo.
+- **La app usa los mocks en el APK aunque el `.env` tenga la URL** → EAS no sube el `.env`. La
+  URL va en `eas.json`, en el `env` de cada perfil.
 - **`npm install` falla por peer dependencies** → `npm install --legacy-peer-deps` y después
   `npx expo install --fix`.
 - **Los tests tiran `Unexpected token 'export'`** → el `transformIgnorePatterns` de

@@ -13,7 +13,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { listarCuadrillas, listarTiposDeReporte, listarZonas } from '@/servicios/catalogos';
-import { listarReportes } from '@/servicios/reportes';
+import { listarBandeja } from '@/servicios/reportes';
 import { colores, espacio, radios, tipografia } from '@/tema';
 import {
   ESTADOS_REPORTE,
@@ -56,7 +56,7 @@ export default function Bandeja() {
     setError(null);
     try {
       const [pagina, listaTipos, listaZonas, listaCuadrillas] = await Promise.all([
-        listarReportes({ porPagina: 200 }),
+        listarBandeja(),
         listarTiposDeReporte(),
         listarZonas(),
         listarCuadrillas(),

@@ -9,7 +9,9 @@ import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { mensajeParaUsuario } from '@/errores';
 import * as haptica from '@/servicios/haptica';
+import { obtenerReportePorCodigo } from '@/servicios/reportes';
 import { abrirConfiguracion } from '@/servicios/ubicacion';
 import { colores, espacio, radios } from '@/tema';
 import { Aviso, Boton, EstadoCarga, Pantalla, Parrafo, Subtitulo, Titulo } from '@/ui';
@@ -27,6 +29,9 @@ function idDesdeQr(contenido: string): string | null {
   return null;
 }
 
+/** Numero de seguimiento (GCHU-2026-00412): es lo que lleva el QR segun el README de la API. */
+const PATRON_CODIGO = /^GCHU-\d{4}-\d{5}$/i;
+
 export default function Escanear() {
   const router = useRouter();
   const [permiso, pedirPermiso] = useCameraPermissions();
@@ -37,18 +42,35 @@ export default function Escanear() {
 
   function alLeer(contenido: string) {
     if (yaLeido.current) return;
+    const abrir = (id: string) => {
+      void haptica.confirmarEnvio();
+      router.push({ pathname: '/reporte/[id]', params: { id } });
+      // Se rehabilita al volver a la pantalla.
+      setTimeout(() => {
+        yaLeido.current = false;
+      }, 1500);
+    };
+
     const id = idDesdeQr(contenido);
-    if (!id) {
-      setError('Ese código no es de un reporte de esta app.');
+    if (id) {
+      yaLeido.current = true;
+      setError(null);
+      abrir(id);
       return;
     }
-    yaLeido.current = true;
-    void haptica.confirmarEnvio();
-    router.push({ pathname: '/reporte/[id]', params: { id } });
-    // Se rehabilita al volver a la pantalla.
-    setTimeout(() => {
-      yaLeido.current = false;
-    }, 1500);
+    // P-11: el QR puede traer el numero de seguimiento en vez del id. Se busca en la API.
+    if (PATRON_CODIGO.test(contenido.trim())) {
+      yaLeido.current = true;
+      setError(null);
+      obtenerReportePorCodigo(contenido)
+        .then((reporte) => abrir(reporte.id))
+        .catch((e: unknown) => {
+          setError(mensajeParaUsuario(e));
+          yaLeido.current = false;
+        });
+      return;
+    }
+    setError('Ese código no es de un reporte de esta app.');
   }
 
   if (!permiso) {
