@@ -94,7 +94,8 @@
         {
           "microphonePermission": "Reporte Ciudadano usa el microfono para grabar la descripcion hablada del problema."
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
