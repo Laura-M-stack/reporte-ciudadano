@@ -9,6 +9,9 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api-reporte-ciudadano-8f4l.onrender.com"
       }
     },
     "preview": {
@@ -16,6 +19,9 @@
       "channel": "preview",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api-reporte-ciudadano-8f4l.onrender.com"
       }
     },
     "production": {
@@ -23,6 +29,9 @@
       "channel": "production",
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api-reporte-ciudadano-8f4l.onrender.com"
       }
     }
   },
