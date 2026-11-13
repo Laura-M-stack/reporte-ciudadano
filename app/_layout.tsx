@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AvisoDeRed } from '@/componentes/AvisoDeRed';
 import { ProveedorSesion, useSesion } from '@/contexto/ContextoSesion';
 import { iniciarAutoSincronizacion } from '@/servicios/cola';
 import {
@@ -43,6 +44,7 @@ export default function LayoutRaiz() {
       <SafeAreaView style={{ flex: 1, backgroundColor: colores.fondo }} edges={['top']}>
         <StatusBar style="dark" />
         <Arranque />
+        <AvisoDeRed />
         <Stack
           screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colores.fondo } }}
         />
