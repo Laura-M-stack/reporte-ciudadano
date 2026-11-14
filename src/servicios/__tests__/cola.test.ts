@@ -303,6 +303,16 @@ describe('eliminar y limpiar', () => {
     expect(repositorio.contenido().length).toBe(0);
   });
 
+  it('con conservarAdjuntos saca la fila pero deja los archivos', async () => {
+    const { cola, borrados, repositorio } = armar();
+    const item = await cola.encolar(borrador());
+
+    await cola.eliminar(item.idLocal, { conservarAdjuntos: true });
+
+    expect(borrados).toEqual([]);
+    expect(repositorio.contenido().length).toBe(0);
+  });
+
   it('limpiarEnviados no toca lo que sigue pendiente', async () => {
     const { cola } = armar({ hayInternet: false });
     await cola.encolar(borrador());

@@ -212,10 +212,11 @@ export function crearServicioCola(deps: DependenciasCola): ServicioCola {
       return resultado;
     },
 
-    async eliminar(idLocal) {
+    async eliminar(idLocal, opciones) {
       const item = await repositorio.obtener(idLocal);
       if (!item) return;
-      for (const adjunto of item.borrador.adjuntos) {
+      const adjuntosABorrar = opciones?.conservarAdjuntos ? [] : item.borrador.adjuntos;
+      for (const adjunto of adjuntosABorrar) {
         try {
           borrarArchivo(adjunto.uri);
         } catch {

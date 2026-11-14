@@ -24,7 +24,7 @@ import { GrabadorAudio } from '@/componentes/Audio';
 import { CapturaFoto } from '@/componentes/CapturaFoto';
 import { SelectorUbicacion } from '@/componentes/SelectorUbicacion';
 import { useSesion } from '@/contexto/ContextoSesion';
-import { mensajeParaUsuario } from '@/errores';
+import { ErrorServicio, mensajeParaUsuario } from '@/errores';
 import { elegirDeGaleria, registrarAudio, registrarFoto } from '@/servicios/adjuntos';
 import { listarTiposDeReporte, listarZonas } from '@/servicios/catalogos';
 import { cola } from '@/servicios/cola';
@@ -60,6 +60,12 @@ import {
 /** Hasta dos fotos, como pide el PRD ("poder agregar una segunda foto"). */
 const MAX_FOTOS = 2;
 
+/** Para encadenar un mensaje de error dentro de otro texto sin que quede sin punto final. */
+function conPunto(texto: string): string {
+  const limpio = texto.trim();
+  return /[.!?]$/.test(limpio) ? limpio : `${limpio}.`;
+}
+
 export default function Reportar() {
   const router = useRouter();
   const { usuario } = useSesion();
@@ -91,6 +97,14 @@ export default function Reportar() {
     codigo: string | null;
     enCola: boolean;
     idLocal: string;
+    /**
+     * Solo cuando quedo en la cola: 'sinRed' si no habia conexion (no se intento enviar) y
+     * 'reintento' si habia conexion pero el envio fallo por algo pasajero (p. ej. el servidor
+     * tardo en despertar). Son mensajes distintos: en el segundo caso decir "cuando vuelva la
+     * señal" es falso, porque la señal esta.
+     */
+    motivo: 'sinRed' | 'reintento' | null;
+    detalle: string | null;
   } | null>(null);
 
   const puntoChequeado = useRef<string>('');
@@ -226,11 +240,35 @@ export default function Reportar() {
       const resultado = await cola.reintentar(item.idLocal);
       const guardado = await cola.obtener(item.idLocal);
 
+      if (guardado?.estadoEnvio === 'error') {
+        // La API lo rechazo por los datos (p. ej. el punto quedo fuera de la ciudad). Eso no
+        // se arregla reintentando, asi que no lo dejamos en la cola diciendo "se envia solo":
+        // sacamos la fila (sin borrar las fotos, que el formulario sigue usando) y mostramos el
+        // motivo para que el vecino corrija y vuelva a enviar.
+        await cola.eliminar(item.idLocal, { conservarAdjuntos: true });
+        void haptica.errorAlEnviar();
+        setError(
+          guardado.ultimoError
+            ? mensajeParaUsuario(
+                new ErrorServicio(guardado.ultimoError.codigo, guardado.ultimoError.mensaje),
+              )
+            : 'No se pudo enviar el reporte.',
+        );
+        return;
+      }
+
+      const enCola = resultado.enviados === 0;
       void haptica.confirmarEnvio();
       setExito({
         codigo: guardado?.codigoRemoto ?? null,
-        enCola: resultado.enviados === 0,
+        enCola,
         idLocal: item.idLocal,
+        motivo: !enCola ? null : resultado.intentados === 0 ? 'sinRed' : 'reintento',
+        detalle: guardado?.ultimoError
+          ? mensajeParaUsuario(
+              new ErrorServicio(guardado.ultimoError.codigo, guardado.ultimoError.mensaje),
+            )
+          : null,
       });
       limpiar();
     } catch (e) {
@@ -281,7 +319,11 @@ export default function Reportar() {
             */}
             <Aviso
               tono="alerta"
-              texto={`Tu código provisorio es ${codigoProvisorio(exito.idLocal)}. Quedó guardado en el teléfono y se va a enviar solo cuando vuelva la señal. No hace falta que hagas nada.`}
+              texto={
+                exito.motivo === 'reintento'
+                  ? `Tu código provisorio es ${codigoProvisorio(exito.idLocal)}. No pudimos enviarlo en este momento.${exito.detalle ? ` ${conPunto(exito.detalle)}` : ''} Quedó guardado en el teléfono: se vuelve a intentar cuando abras la app, o podés reintentarlo ahora desde Mis reclamos.`
+                  : `Tu código provisorio es ${codigoProvisorio(exito.idLocal)}. Quedó guardado en el teléfono y se va a enviar solo cuando vuelva la señal. No hace falta que hagas nada.`
+              }
             />
             <Parrafo suave>
               Cuando se sincronice vas a ver el número de seguimiento oficial en Mis reclamos.
@@ -482,6 +524,11 @@ export default function Reportar() {
       />
 
       {/* 6. Enviar */}
+      {/*
+        El error se repite aca porque el vecino toca Enviar al final del formulario: el aviso
+        de arriba de todo queda fuera de la pantalla y parecia que no pasaba nada.
+      */}
+      {!!error && <Aviso texto={error} tono="error" />}
       {faltante ? (
         <Aviso tono="alerta" texto={`Para enviar falta: ${faltante}.`} />
       ) : (

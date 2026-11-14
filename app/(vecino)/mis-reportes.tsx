@@ -159,11 +159,17 @@ export default function MisReportes() {
             {codigoProvisorio(item.idLocal)} · Pendiente de sincronización
           </Parrafo>
           <Parrafo suave>
-            {item.estadoEnvio === 'error' ? 'No se pudo enviar' : 'Esperando señal'} ·{' '}
+            {item.estadoEnvio === 'error'
+              ? 'No se pudo enviar'
+              : item.ultimoError
+                ? 'Falló el envío, se va a reintentar'
+                : 'Esperando señal'}{' '}
+            ·{' '}
             {tiempoRelativo(item.creadoEn)}
           </Parrafo>
           {!!item.ultimoError && <Parrafo suave>{item.ultimoError.mensaje}</Parrafo>}
-          {item.estadoEnvio === 'error' && (
+          {/* Tambien con un fallo pasajero: si hay señal, el vecino no tiene por que esperar. */}
+          {(item.estadoEnvio === 'error' || !!item.ultimoError) && (
             <View style={{ gap: espacio.sm }}>
               <Boton
                 titulo="Reintentar ahora"

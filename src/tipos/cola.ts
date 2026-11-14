@@ -91,8 +91,12 @@ export interface ServicioCola {
   obtener(idLocal: string): Promise<ReporteEnCola | null>;
   /** Reintenta uno (si se pasa idLocal) o toda la cola. No lanza: devuelve el resumen. */
   reintentar(idLocal?: string): Promise<ResultadoSincronizacion>;
-  /** Descarta un reporte de la cola (el vecino lo cancela). Borra tambien sus adjuntos locales. */
-  eliminar(idLocal: string): Promise<void>;
+  /**
+   * Descarta un reporte de la cola (el vecino lo cancela). Borra tambien sus adjuntos locales,
+   * salvo con `conservarAdjuntos`: lo usa la pantalla de reportar cuando la API rechaza el
+   * reporte y el formulario sigue mostrando esas mismas fotos para que el vecino corrija.
+   */
+  eliminar(idLocal: string, opciones?: { conservarAdjuntos?: boolean }): Promise<void>;
   /** Saca de la cola lo ya enviado hace mas de `dias`. */
   limpiarEnviados(dias?: number): Promise<number>;
   /**
