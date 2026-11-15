@@ -20,24 +20,32 @@ export interface DisponibilidadBiometria {
 }
 
 export async function disponibilidad(): Promise<DisponibilidadBiometria> {
+  let hayHardware = false;
+  let hayRegistro = false;
   try {
-    const hayHardware = await LocalAuthentication.hasHardwareAsync();
-    const hayRegistro = hayHardware ? await LocalAuthentication.isEnrolledAsync() : false;
-    let etiqueta: string | null = null;
-    if (hayRegistro) {
+    hayHardware = await LocalAuthentication.hasHardwareAsync();
+    hayRegistro = hayHardware ? await LocalAuthentication.isEnrolledAsync() : false;
+  } catch {
+    return { hayHardware: false, hayRegistro: false, etiqueta: null };
+  }
+
+  // La etiqueta es solo texto del boton. Si falla averiguarla (pasa en algunos Android viejos),
+  // NO puede tumbar el resultado: el telefono igual tiene huella registrada.
+  let etiqueta: string | null = null;
+  if (hayRegistro) {
+    etiqueta = 'biometria';
+    try {
       const tipos = await LocalAuthentication.supportedAuthenticationTypesAsync();
       if (tipos.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
         etiqueta = 'rostro';
       } else if (tipos.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
         etiqueta = 'huella';
-      } else {
-        etiqueta = 'biometria';
       }
+    } catch {
+      // se queda con la etiqueta generica
     }
-    return { hayHardware, hayRegistro, etiqueta };
-  } catch {
-    return { hayHardware: false, hayRegistro: false, etiqueta: null };
   }
+  return { hayHardware, hayRegistro, etiqueta };
 }
 
 /**
