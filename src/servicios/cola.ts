@@ -50,6 +50,17 @@ export interface DependenciasCola {
   borrarArchivo?: (uri: string) => void;
 }
 
+/**
+ * Agrega al mensaje el motivo tecnico (el error original de fetch) para poder diagnosticar
+ * fallas en el telefono. Solo se muestra en la tarjeta del reporte pendiente en Mis reclamos.
+ */
+function conMotivoTecnico(error: ErrorServicio): string {
+  const causa = error.causa;
+  const motivo =
+    causa instanceof Error ? `${causa.name}: ${causa.message}` : causa ? String(causa) : '';
+  return motivo ? `${error.mensaje} [${motivo}]` : error.mensaje;
+}
+
 /** Estados que se vuelven a intentar cuando hay red. */
 const REINTENTABLES: EstadoEnvio[] = ['pendiente', 'error'];
 
@@ -106,7 +117,7 @@ export function crearServicioCola(deps: DependenciasCola): ServicioCola {
         ...enCurso,
         estadoEnvio: puedeReintentar ? 'pendiente' : 'error',
         intentos,
-        ultimoError: error.aErrorApi(),
+        ultimoError: { ...error.aErrorApi(), mensaje: conMotivoTecnico(error) },
       });
     }
   }

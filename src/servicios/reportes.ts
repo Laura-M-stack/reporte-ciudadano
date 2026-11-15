@@ -310,7 +310,13 @@ export async function crearReporte(
         url = subido.url;
         adjunto.urlRemota = url;
       } catch (e) {
-        throw comoErrorServicio(e, CODIGOS.ERROR_ARCHIVO, 'No se pudo subir la foto o el audio.');
+        const error = comoErrorServicio(e, CODIGOS.ERROR_ARCHIVO, 'No se pudo subir la foto o el audio.');
+        // Diagnostico: deja marcado que la falla fue al subir el archivo, no al crear el reporte.
+        throw new ErrorServicio(error.codigo, `${error.mensaje} (al subir ${adjunto.tipo})`, {
+          causa: error.causa ?? e,
+          detalles: error.detalles,
+          reintentable: error.reintentable,
+        });
       }
     }
 
