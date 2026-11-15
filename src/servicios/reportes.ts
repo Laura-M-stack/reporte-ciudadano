@@ -8,6 +8,7 @@
  * Todas las funciones son asincronas desde el dia uno, aunque el mock responda al instante.
  * Todas lanzan ErrorServicio (nunca Error pelado).
  */
+import { Platform } from 'react-native';
 import { CODIGOS, ErrorServicio, comoErrorServicio, esErrorServicio } from '../errores';
 import { preferencias } from '../datos/preferencias';
 import {
@@ -297,11 +298,20 @@ export async function crearReporte(
     if (!url) {
       try {
         const form = new FormData();
-        form.append('archivo', {
-          uri: adjunto.uri,
-          name: adjunto.uri.split('/').pop() ?? `${adjunto.id}.${adjunto.tipo === 'audio' ? 'm4a' : 'jpg'}`,
-          type: adjunto.tipo === 'audio' ? 'audio/m4a' : 'image/jpeg',
-        } as unknown as Blob);
+        const nombre = adjunto.uri.split('/').pop() ?? `${adjunto.id}.${adjunto.tipo === 'audio' ? 'm4a' : 'jpg'}`;
+        const tipoMime = adjunto.tipo === 'audio' ? 'audio/m4a' : 'image/jpeg';
+
+        if (Platform.OS === 'web') {
+          const res = await fetch(adjunto.uri);
+          const blob = await res.blob();
+          form.append('archivo', blob, nombre);
+        } else {
+          form.append('archivo', {
+            uri: adjunto.uri,
+            name: nombre,
+            type: tipoMime,
+          } as unknown as Blob);
+        }
 
         const subido = await pedir<{ url: string }>('/archivos', {
           metodo: 'POST',
@@ -310,13 +320,7 @@ export async function crearReporte(
         url = subido.url;
         adjunto.urlRemota = url;
       } catch (e) {
-        const error = comoErrorServicio(e, CODIGOS.ERROR_ARCHIVO, 'No se pudo subir la foto o el audio.');
-        // Diagnostico: deja marcado que la falla fue al subir el archivo, no al crear el reporte.
-        throw new ErrorServicio(error.codigo, `${error.mensaje} (al subir ${adjunto.tipo})`, {
-          causa: error.causa ?? e,
-          detalles: error.detalles,
-          reintentable: error.reintentable,
-        });
+        throw comoErrorServicio(e, CODIGOS.ERROR_ARCHIVO, 'No se pudo subir la foto o el audio.');
       }
     }
 
@@ -596,11 +600,18 @@ export async function subirFotoDeArreglo(reporteId: string, uriLocal: string): P
 
   // 1. Subir a /archivos
   const formulario = new FormData();
-  formulario.append('archivo', {
-    uri: uriLocal,
-    name: uriLocal.split('/').pop() ?? 'arreglo.jpg',
-    type: 'image/jpeg',
-  } as unknown as Blob);
+  const nombre = uriLocal.split('/').pop() ?? 'arreglo.jpg';
+  if (Platform.OS === 'web') {
+    const res = await fetch(uriLocal);
+    const blob = await res.blob();
+    formulario.append('archivo', blob, nombre);
+  } else {
+    formulario.append('archivo', {
+      uri: uriLocal,
+      name: nombre,
+      type: 'image/jpeg',
+    } as unknown as Blob);
+  }
 
   const subido = await pedir<{ url: string }>('/archivos', {
     metodo: 'POST',

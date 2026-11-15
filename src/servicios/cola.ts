@@ -1,24 +1,3 @@
-/**
- * Cola offline de reportes. Es la pieza mas compartida del proyecto:
- * la escribe Persona 2, la lee Persona 3 y la limpia Persona 1.
- *
- * Como esta armada y por que:
- *  - `crearServicioCola` es una fabrica que recibe TODO por inyeccion (repositorio, funcion
- *    de envio, reloj, generador de ids, chequeo de red). Asi el comportamiento de la cola
- *    —reintentos, tope de intentos, transiciones de estado— se testea en Node, sin SQLite,
- *    sin red y sin esperar timers reales.
- *  - La cola NO sabe hablar HTTP. Recibe `enviar`, que hoy apunta a servicios/reportes.ts.
- *  - La cola NO calcula la zona. El zonaId ya viene resuelto en el borrador (logica pura de
- *    src/utils/geo.ts, que corre offline). Ver la decision en el README, seccion Arquitectura.
- *
- * Maquina de estados de una fila:
- *
- *   pendiente --(hay red)--> enviando --(ok)--> enviado
- *        ^                       |
- *        |                       +--(falla reintentable, intentos < MAX)--> pendiente
- *        |                       +--(falla definitiva o intentos == MAX)--> error
- *        +--(el vecino toca "reintentar")-----------------------------------+
- */
 import { CODIGOS, ErrorServicio, comoErrorServicio, esErrorServicio } from '../errores';
 import type {
   BorradorReporte,
@@ -48,17 +27,6 @@ export interface DependenciasCola {
   maxIntentos?: number;
   /** Borra el archivo local de un adjunto al descartar un reporte. */
   borrarArchivo?: (uri: string) => void;
-}
-
-/**
- * Agrega al mensaje el motivo tecnico (el error original de fetch) para poder diagnosticar
- * fallas en el telefono. Solo se muestra en la tarjeta del reporte pendiente en Mis reclamos.
- */
-function conMotivoTecnico(error: ErrorServicio): string {
-  const causa = error.causa;
-  const motivo =
-    causa instanceof Error ? `${causa.name}: ${causa.message}` : causa ? String(causa) : '';
-  return motivo ? `${error.mensaje} [${motivo}]` : error.mensaje;
 }
 
 /** Estados que se vuelven a intentar cuando hay red. */
@@ -117,7 +85,7 @@ export function crearServicioCola(deps: DependenciasCola): ServicioCola {
         ...enCurso,
         estadoEnvio: puedeReintentar ? 'pendiente' : 'error',
         intentos,
-        ultimoError: { ...error.aErrorApi(), mensaje: conMotivoTecnico(error) },
+        ultimoError: error.aErrorApi(),
       });
     }
   }
@@ -297,7 +265,7 @@ export function iniciarAutoSincronizacion(
   // Primer intento al abrir la app; despues, en cada cambio de red que traiga conexion.
   sincronizar();
   const baja = escucharRed((estado) => {
-    if (estado.hayConexion && estado.internetAlcanzable !== false) sincronizar();
+    if (estado.hayConexion) sincronizar();
   });
 
   bajaDeRed = () => {

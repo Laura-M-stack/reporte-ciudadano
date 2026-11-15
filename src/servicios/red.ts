@@ -28,7 +28,7 @@ export async function estadoRed(): Promise<EstadoRed> {
 
 export async function hayInternet(): Promise<boolean> {
   const estado = await estadoRed();
-  return estado.hayConexion && estado.internetAlcanzable !== false;
+  return estado.hayConexion;
 }
 
 /** Devuelve la funcion para desuscribirse. */

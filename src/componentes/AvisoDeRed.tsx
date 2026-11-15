@@ -1,15 +1,4 @@
-/**
- * Franja que avisa el estado de la red (requisito 7: "avisar el estado de la red con
- * expo-network"). Va una sola vez, en el layout raiz, asi se ve en todas las pantallas.
- *
- * - Sin conexion: queda fija mientras dure. Le dice al vecino que puede seguir reportando,
- *   porque la cola guarda el reporte y lo manda solo (ver src/servicios/cola.ts).
- * - Cuando vuelve: "Volvio la conexion" durante unos segundos y desaparece. Sin ese aviso el
- *   vecino no sabe si lo pendiente ya se esta enviando.
- *
- * `internetAlcanzable === null` (algunos Android no saben decirlo) cuenta como "hay red": un
- * falso "sin conexion" asusta mas de lo que ayuda.
- */
+
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -20,8 +9,7 @@ const MS_AVISO_VOLVIO = 4000;
 
 type Mostrar = 'nada' | 'sinRed' | 'volvio';
 
-const conRed = (estado: EstadoRed) =>
-  estado.hayConexion && estado.internetAlcanzable !== false;
+const conRed = (estado: EstadoRed) => estado.hayConexion;
 
 export function AvisoDeRed() {
   const [mostrar, setMostrar] = useState<Mostrar>('nada');
