@@ -8,6 +8,7 @@
  * Todas las funciones son asincronas desde el dia uno, aunque el mock responda al instante.
  * Todas lanzan ErrorServicio (nunca Error pelado).
  */
+import { File } from 'expo-file-system';
 import { CODIGOS, ErrorServicio, comoErrorServicio, esErrorServicio } from '../errores';
 import { preferencias } from '../datos/preferencias';
 import {
@@ -253,6 +254,24 @@ export async function historialDeReporte(reporteId: string): Promise<CambioDeEst
 }
 
 /**
+ * Arma la parte de un FormData para subir un archivo del telefono.
+ *
+ * El fetch de Expo (el global desde el SDK 52) NO acepta el formato clasico de React Native
+ * `{ uri, name, type }`: falla con "Unsupported FormDataPart implementation". Hay que pasar
+ * un `File` de expo-file-system, que ya trae nombre y tipo a partir de la extension.
+ */
+function parteDeArchivo(uri: string): File {
+  const archivo = new File(uri);
+  if (!archivo.exists) {
+    // Reintentar no lo arregla: el archivo ya no esta.
+    throw new ErrorServicio(CODIGOS.ERROR_ARCHIVO, 'La foto o el audio ya no están en el teléfono.', {
+      detalles: { uri },
+    });
+  }
+  return archivo;
+}
+
+/**
  * Sube un reporte. La llama el servicio de cola, NUNCA una pantalla: el vecino siempre
  * encola (aunque tenga señal), y la cola decide cuando subir. Asi hay un solo camino.
  *
@@ -297,11 +316,7 @@ export async function crearReporte(
     if (!url) {
       try {
         const form = new FormData();
-        form.append('archivo', {
-          uri: adjunto.uri,
-          name: adjunto.uri.split('/').pop() ?? `${adjunto.id}.${adjunto.tipo === 'audio' ? 'm4a' : 'jpg'}`,
-          type: adjunto.tipo === 'audio' ? 'audio/m4a' : 'image/jpeg',
-        } as unknown as Blob);
+        form.append('archivo', parteDeArchivo(adjunto.uri));
 
         const subido = await pedir<{ url: string }>('/archivos', {
           metodo: 'POST',
@@ -596,11 +611,7 @@ export async function subirFotoDeArreglo(reporteId: string, uriLocal: string): P
 
   // 1. Subir a /archivos
   const formulario = new FormData();
-  formulario.append('archivo', {
-    uri: uriLocal,
-    name: uriLocal.split('/').pop() ?? 'arreglo.jpg',
-    type: 'image/jpeg',
-  } as unknown as Blob);
+  formulario.append('archivo', parteDeArchivo(uriLocal));
 
   const subido = await pedir<{ url: string }>('/archivos', {
     metodo: 'POST',
